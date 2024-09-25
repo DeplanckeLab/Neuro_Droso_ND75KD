@@ -15,7 +15,7 @@ cellranger count --id Pan_neuro_ND75KD --fastqs=./fastq --sample=Pan_neuro_ND75K
 ```
 **Note:** In the manuscript, we used the dm6 genome assembly.
 
-### 1.2. Generating individual Seurat object for each library (see full code here: [[Rmd](preprocessing/S0a_Pan_neuro_control.Rmd)][[html](https://htmlpreview.github.io/?https://github.com/DeplanckeLab/Neuro_Droso_ND75KD/blob/main/preprocessing/S0a_Pan_neuro_control.html)] and [[Rmd](preprocessing/S0b_Pan_neuro_ND75KD.Rmd)][[html](https://htmlpreview.github.io/?https://github.com/DeplanckeLab/Neuro_Droso_ND75KD/blob/main/preprocessing/S0b_Pan_neuro_ND75KD.html)])</sub>
+### 1.2. Generating individual Seurat object for each library (see full code here: Pan_neuro_control [[Rmd](preprocessing/S0a_Pan_neuro_control.Rmd)][[html](https://htmlpreview.github.io/?https://github.com/DeplanckeLab/Neuro_Droso_ND75KD/blob/main/preprocessing/S0a_Pan_neuro_control.html)] and Pan_neuro_ND75KD [[Rmd](preprocessing/S0b_Pan_neuro_ND75KD.Rmd)][[html](https://htmlpreview.github.io/?https://github.com/DeplanckeLab/Neuro_Droso_ND75KD/blob/main/preprocessing/S0b_Pan_neuro_ND75KD.html)])</sub>
 
 ```bash
 Rscript -e "rmarkdown::render('./preprocessing/S0a_Pan_neuro_control.Rmd', output_file = './preprocessing/S0a_Pan_neuro_control.html')"
