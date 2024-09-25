@@ -1,0 +1,146 @@
+---
+title: "Neuro_Droso_ND75KD - Generating non-integrated PanNeuroControl Seurat object"
+author: "Vincent Gardeux"
+date_created: "2023-05-09"
+date_modified: "2024-09-25"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
+```
+
+## Introduction
+
+In this script, I will analyze the Pan Neuro Control single-cell RNA-seq dataset using Seurat.
+
+## Libraries
+
+```{r}
+suppressPackageStartupMessages(library(Seurat, lib.loc = "/home/gardeux/.R/lib/")) # Seurat v4.4.0, library for single-cell analysis
+suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
+
+cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+```
+
+## Parameters
+
+```{r}
+# Also setting up the default repository for the analysis (TODO: CHANGE THIS)
+output_10x <- "./data/Pan_neuro_control.h5"
+project_name <- "Pan_neuro_control"
+```
+
+## I. Parsing
+
+First step is to read 10X files and create a Seurat object
+
+```{r}
+# Here, put the path of the 10x count matrix (output of cellranger)
+data.seurat <- CreateSeuratObject(Read10X_h5(output_10x), project=project_name)
+message(ncol(data.seurat), " cells were loaded")
+message(nrow(data.seurat), " genes were loaded")
+```
+
+## II. Filtering cells/genes
+
+# Find Mitochondrial genes
+
+```{r}
+# I know that Mitochondrial genes start with mt: in the Drosophila assembly that I'm using
+data.seurat[["percent.mt"]] <- PercentageFeatureSet(data.seurat, pattern = "^mt:")
+```
+
+# Visualize QC metrics as a violin plot
+
+```{r}
+VlnPlot(data.seurat, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+```
+
+# Filtering cells
+
+We see in the plots that one cell is an outlier, and a few others are a bit off compared to the main mass of cells. I will filter the "low quality cells" and outlier cells
+
+```{r}
+data.seurat <- subset(data.seurat, subset = nCount_RNA < 20000 & percent.mt < 10)
+message(ncol(data.seurat), " cells remain after filtering")
+```
+
+# Visualize QC metrics as a violin plot
+
+Visualizing again the QC, without the filtered cells.
+
+```{r}
+VlnPlot(data.seurat, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+```
+
+## III. Preprocessing the data
+
+# Normalization
+
+```{r}
+# Default params
+data.seurat <- NormalizeData(data.seurat, normalization.method = "LogNormalize", scale.factor = 10000) 
+```
+
+# Highly variable genes
+
+```{r}
+data.seurat <- FindVariableFeatures(data.seurat, selection.method = "vst", nfeatures = 2000)
+VariableFeaturePlot(data.seurat)
+```
+
+# Scaling
+
+```{r}
+data.seurat <- ScaleData(data.seurat, features = rownames(data.seurat))
+```
+
+# PCA
+
+```{r}
+data.seurat <- RunPCA(data.seurat, features = VariableFeatures(data.seurat), verbose = F, npcs = 100)
+DimPlot(data.seurat, reduction = "pca")
+```
+
+Note: Seurat computes 50PCs by default, and Jackstraw plot says all of them are significant. So, I decided to compute up to 100 PCs.
+
+# JackStraw
+```{r}
+data.seurat <- JackStraw(data.seurat, num.replicate = 100, dims = 100)
+data.seurat <- ScoreJackStraw(data.seurat, dims = 1:100)
+data.seurat@reductions$pca@jackstraw$overall.p.values
+```
+
+The p-value distribution show that ~80 PCs are good, so I keep 80 PCs for the rest of the pipeline.
+I've plotted the tail of the JackStraw plot (70 to 90 PCs) to see that indeed the sweet spot is around there.
+
+```{r}
+JackStrawPlot(data.seurat, dims = 70:90)
+```
+
+# Clustering
+```{r}
+data.seurat <- FindNeighbors(data.seurat, dims = 1:80)
+data.seurat <- FindClusters(data.seurat, resolution = 4)
+```
+
+# UMAP (visualization)
+```{r}
+data.seurat <- RunUMAP(data.seurat, dims = 1:80)
+DimPlot(data.seurat, reduction = "umap")
+```
+
+# t-SNE (visualization)
+```{r}
+data.seurat <- RunTSNE(data.seurat, dims = 1:80)
+DimPlot(data.seurat, reduction = "tsne")
+```
+
+# Saving the Seurat object
+```{r}
+saveRDS(data.seurat, file =  paste0("./data/", project_name, ".rds"))
+```
