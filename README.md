@@ -10,8 +10,8 @@ All .fastq files were deposited on ArrayExpress under the accession number [E-MT
 Here we follow standard protocols. 
 
 ```bash
-cellranger count --id Pan_neuro_control --fastqs=./fastq --sample=Pan_neuro_control --transcriptome=${10x_genome} --nosecondary
-cellranger count --id Pan_neuro_ND75KD --fastqs=./fastq --sample=Pan_neuro_ND75KD --transcriptome=${10x_genome} --nosecondary
+cellranger count --id Pan_neuro_control --fastqs=./fastq --sample=Pan_neuro_control --transcriptome=${10x_genome} --expect-cells=10000 --chemistry=auto --include-introns=true
+cellranger count --id Pan_neuro_ND75KD --fastqs=./fastq --sample=Pan_neuro_ND75KD --transcriptome=${10x_genome} --expect-cells=10000 --chemistry=auto --include-introns=true
 ```
 **Note:** In the manuscript, we used the dm6 genome assembly.
 
