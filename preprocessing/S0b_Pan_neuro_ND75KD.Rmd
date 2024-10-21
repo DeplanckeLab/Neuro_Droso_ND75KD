@@ -21,15 +21,16 @@ In this script, I will analyze the Pan Neuro ND75-KD single-cell RNA-seq dataset
 
 ```{r}
 suppressPackageStartupMessages(library(Seurat, lib.loc = "/home/gardeux/.R/lib/")) # Seurat v4.4.0, library for single-cell analysis
+suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/home/gardeux/.R/lib/")) # For compatibility purpose
 suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
 
 cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("SeuratObject"), "version", as.character(packageVersion("Seurat")), "\n")
 ```
 
 ## Parameters
 
 ```{r}
-# Also setting up the default repository for the analysis (TODO: CHANGE THIS)
 output_10x <- "./data/Pan_neuro_ND75KD.h5"
 project_name <- "Pan_neuro_ND75KD"
 ```

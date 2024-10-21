@@ -1,0 +1,27 @@
+---
+title: "Neuro_Droso_ND75KD - Generating integrated dataset including both Pan_neuro_control and Pan_neuro_ND75KD Seurat objects"
+author: "Vincent Gardeux"
+date_created: "2023-05-12"
+date_modified: "2024-09-25"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
+```
+
+## Introduction
+
+In this script, I will analyze the Pan Neuro ND75-KD single-cell RNA-seq dataset using Seurat.
+
+## Libraries
+
+```{r}
+suppressPackageStartupMessages(library(Seurat, lib.loc = "/home/gardeux/.R/lib/")) # Seurat v4.4.0, library for single-cell analysis
+suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
+
+cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+```
