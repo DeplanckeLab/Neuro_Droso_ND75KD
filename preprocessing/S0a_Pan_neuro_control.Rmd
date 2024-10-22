@@ -22,10 +22,12 @@ In this script, I will analyze the Pan Neuro Control single-cell RNA-seq dataset
 ```{r}
 suppressPackageStartupMessages(library(Seurat, lib.loc = "/home/gardeux/.R/lib/")) # Seurat v4.4.0, library for single-cell analysis
 suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/home/gardeux/.R/lib/")) # For compatibility purpose
+suppressPackageStartupMessages(library(data.table)) # For reading text files
 suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
 
 cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
 cat(bold("SeuratObject"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
 ```
 
 ## Parameters
@@ -51,8 +53,12 @@ message(nrow(data.seurat), " genes were loaded")
 # Find Mitochondrial genes
 
 ```{r}
+# Read gene mapping
+data.gene.mapping <- fread("./data/dmel-r6.58_GFP.gtf.all.exon.length.txt", header = T, sep = "\t", data.table = F)
+rownames(data.gene.mapping) <- data.gene.mapping$Ensembl
 # I know that Mitochondrial genes start with mt: in the Drosophila assembly that I'm using
-data.seurat[["percent.mt"]] <- PercentageFeatureSet(data.seurat, pattern = "^mt:")
+mt.genes <- rownames(data.gene.mapping)[startsWith(data.gene.mapping$Name, "mt:")]
+data.seurat[["percent.mt"]] <- PercentageFeatureSet(data.seurat, features = mt.genes)
 ```
 
 # Visualize QC metrics as a violin plot
@@ -116,28 +122,29 @@ data.seurat <- ScoreJackStraw(data.seurat, dims = 1:100)
 data.seurat@reductions$pca@jackstraw$overall.p.values
 ```
 
-The p-value distribution show that ~80 PCs are good, so I keep 80 PCs for the rest of the pipeline.
-I've plotted the tail of the JackStraw plot (70 to 90 PCs) to see that indeed the sweet spot is around there.
+The p-value distribution show that ~90 PCs are good (similar to Pan_neuro_ND75KD), so I keep 90 PCs for the rest of the pipeline.
+I've plotted the tail of the JackStraw plot (80 to 100 PCs) to see that indeed the sweet spot is around there.
 
 ```{r}
-JackStrawPlot(data.seurat, dims = 70:90)
+JackStrawPlot(data.seurat, dims = 80:100)
+npcs <- 90
 ```
 
 # Clustering
 ```{r}
-data.seurat <- FindNeighbors(data.seurat, dims = 1:80)
+data.seurat <- FindNeighbors(data.seurat, dims = 1:npcs)
 data.seurat <- FindClusters(data.seurat, resolution = 4)
 ```
 
 # UMAP (visualization)
 ```{r}
-data.seurat <- RunUMAP(data.seurat, dims = 1:80)
+data.seurat <- RunUMAP(data.seurat, dims = 1:npcs)
 DimPlot(data.seurat, reduction = "umap")
 ```
 
 # t-SNE (visualization)
 ```{r}
-data.seurat <- RunTSNE(data.seurat, dims = 1:80)
+data.seurat <- RunTSNE(data.seurat, dims = 1:npcs)
 DimPlot(data.seurat, reduction = "tsne")
 ```
 
