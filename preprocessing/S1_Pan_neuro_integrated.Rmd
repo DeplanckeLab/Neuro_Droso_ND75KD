@@ -28,3 +28,74 @@ cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
 cat(bold("SeuratObject"), "version", as.character(packageVersion("Seurat")), "\n")
 ```
 
+## Parameters
+
+```{r}
+input_seurat_path <- c("./data/Pan_neuro_control.rds", "./data/Pan_neuro_ND75KD.rds")
+
+output_seurat_path <- "./data/Pan_neuro_integrated.rds"
+output_project_name <- tools::file_path_sans_ext(basename(output_seurat_path))
+```
+
+## I. Parsing
+
+First step is to read the Seurat objects, previously created
+
+```{r}
+message("Loading Seurat objects...")
+seurat_objects <- list()
+for(path in input_seurat_path){
+  filename <- tools::file_path_sans_ext(basename(path))
+  data.seurat.tmp <- readRDS(path)
+  
+  message(ncol(data.seurat.tmp), " cells were loaded")
+  message(nrow(data.seurat.tmp), " genes were loaded")
+  
+  data.seurat.tmp <- RenameCells(data.seurat.tmp, new.names = paste0(colnames(data.seurat.tmp), "_", strsplit(filename, split = "_")[[1]][3]))
+  seurat_objects[[filename]] <- data.seurat.tmp
+  rm(data.seurat.tmp)
+  rm(filename)
+}
+```
+
+## II. Merge
+
+Inspired from http://htmlpreview.github.io/?https://github.com/immunogenomics/harmony/blob/master/docs/SeuratV3.html
+
+First step is to create a single Seurat object from the two files
+
+```{r}
+# Merge the seurat objects
+data.seurat <- merge(x = seurat_objects[[1]], y = seurat_objects[[2]], project = project_name)
+
+# Filling metadatas
+data.seurat@meta.data$percent.mt <- NULL # No information for FCA data
+data.seurat@meta.data$RNA_snn_res.8 <- NULL # Makes no sense now
+data.seurat@meta.data$seurat_clusters <- NULL # Makes no sense now
+data.seurat@meta.data$nCount_RNA_Log <- NULL # No information for FCA data
+data.seurat@meta.data$nFeature_RNA_Log <- NULL # No information for FCA data
+data.seurat@meta.data$batch_id <- NULL # From FCA but not useful
+data.seurat@meta.data$batch[is.na(data.seurat@meta.data$batch)] <- 13 # It's a new batch (there was 13 batches 0:12 in FCA dataset)
+data.seurat@meta.data$genetics[is.na(data.seurat@meta.data$genetics)] <- data.seurat@meta.data$fly_genetics[is.na(data.seurat@meta.data$genetics)] # change name to 'genetics' to match our data
+data.seurat@meta.data$fly_genetics <- NULL
+
+# Size of the new Seurat object
+message(ncol(data.seurat), " cells in integrated Seurat object")
+message(nrow(data.seurat), " genes in integrated Seurat object")
+
+# Saving RAM
+rm(data.seurat.1)
+rm(data.seurat.2)
+```
+
+## II. GFP filtering
+
+We saw on ASAP that a GFP>1 was a good filtering threshold
+
+```{r}
+message("Filtering GFP signal...")
+data.seurat <- data.seurat[,data.seurat$GFP > 1]
+data.seurat <- data.seurat[rowSums(data.seurat) > 0,]
+message(ncol(data.seurat), " cells remaining")
+message(nrow(data.seurat), " genes remaining")
+```
