@@ -1,0 +1,31 @@
+## VI. Further analyses
+
+To check if some clusters have different ratio of each library, I plot the ratio of cells per cluster.
+
+```{r, fig.height = 3, fig.width = 15}
+data.barplot <- data.frame(cluster = -1, library = -1, nbcells = -1)
+
+for(cluster in names(table(data.seurat@meta.data$seurat_clusters))){
+  which.cells <- (data.seurat@meta.data$seurat_clusters == cluster)
+  data.barplot <- rbind(data.barplot, setNames(cbind(cluster, data.frame(table(data.seurat@meta.data$orig.ident[which.cells]))), names(data.barplot)), deparse.level = 0)
+}
+data.barplot <- data.barplot[-1,]
+data.barplot$cluster <- factor(data.barplot$cluster, levels = unique(data.barplot$cluster))
+
+ggplot(data.barplot, aes(fill=library, y=nbcells, x=cluster)) + geom_bar(position="fill", stat="identity") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+To check if some annotations have different ratio of each library, I plot the ratio of cells per annotation
+
+```{r, fig.height = 6, fig.width = 15}
+data.barplot <- data.frame(annotation = -1, library = -1, nbcells = -1)
+
+for(annot in names(table(data.seurat@meta.data$annotation))){
+  which.cells <- (data.seurat@meta.data$annotation == annot)
+  data.barplot <- rbind(data.barplot, setNames(cbind(annot, data.frame(table(data.seurat@meta.data$orig.ident[which.cells]))), names(data.barplot)), deparse.level = 0)
+}
+data.barplot <- data.barplot[-1,]
+data.barplot$annotation <- factor(data.barplot$annotation, levels = unique(data.barplot$annotation))
+
+ggplot(data.barplot, aes(fill=library, y=nbcells, x=annotation)) + geom_bar(position="fill", stat="identity") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```

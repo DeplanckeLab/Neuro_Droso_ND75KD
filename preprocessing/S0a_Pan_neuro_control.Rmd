@@ -34,7 +34,7 @@ cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "
 
 ```{r}
 input_10x_path <- "./data/Pan_neuro_control.h5"
-input_gene_mapping_path <- "./data/dmel-r6.58_GFP.gtf.all.exon.length.txt"
+input_gene_mapping_path <- "./data/features.tsv"
 
 output_seurat_path <- "./data/Pan_neuro_control.rds"
 output_project_name <- tools::file_path_sans_ext(basename(output_seurat_path))
@@ -46,7 +46,7 @@ First step is to read 10X files and create a Seurat object
 
 ```{r}
 # Here, put the path of the 10x count matrix (output of cellranger)
-data.seurat <- CreateSeuratObject(Read10X_h5(input_10x_path), project=output_project_name)
+data.seurat <- CreateSeuratObject(Read10X_h5(input_10x_path, use.names = F), project=output_project_name)
 message(ncol(data.seurat), " cells were loaded")
 message(nrow(data.seurat), " genes were loaded")
 ```
@@ -57,7 +57,8 @@ message(nrow(data.seurat), " genes were loaded")
 
 ```{r}
 # Read gene mapping
-data.gene.mapping <- fread(input_gene_mapping_path, header = T, sep = "\t", data.table = F)
+data.gene.mapping <- fread(input_gene_mapping_path, header = F, sep = "\t", data.table = F)
+colnames(data.gene.mapping) <- c("Ensembl", "Name", "Type")
 rownames(data.gene.mapping) <- data.gene.mapping$Ensembl
 # I know that Mitochondrial genes start with mt: in the Drosophila assembly that I'm using
 mt.genes <- rownames(data.gene.mapping)[startsWith(data.gene.mapping$Name, "mt:")]

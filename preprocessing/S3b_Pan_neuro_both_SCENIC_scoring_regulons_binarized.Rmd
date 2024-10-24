@@ -1,0 +1,933 @@
+---
+title: "Emma Pan Neuro (Control + ND75KD) - SCENIC scoring (binarized version)"
+author: "Vincent Gardeux"
+date: "03/13/2024"
+output:
+  html_document:
+    df_print: paged
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "~/SVRAW1/gardeux/2023-04-19_Emma_snRNAseq/analysis/")
+```
+
+## Libraries & functions
+
+First, I'm loading the required libraries & functions
+
+```{r}
+suppressPackageStartupMessages(library(Seurat)) # For single-cell pipeline
+suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
+suppressPackageStartupMessages(library(loomR)) # For building a file for ASAP
+suppressPackageStartupMessages(library(Matrix)) # For building a file for ASAP
+suppressPackageStartupMessages(library(ggplot2)) # For plotting
+suppressPackageStartupMessages(library(ggpubr)) # For grid plotting
+suppressPackageStartupMessages(library(plotly)) # For interactive plots
+suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
+
+cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
+cat(bold("loomR"), "version", as.character(packageVersion("loomR")), "\n")
+cat(bold("Matrix"), "version", as.character(packageVersion("Matrix")), "\n")
+cat(bold("ggplot2"), "version", as.character(packageVersion("ggplot2")), "\n")
+cat(bold("ggpubr"), "version", as.character(packageVersion("ggpubr")), "\n")
+cat(bold("plotly"), "version", as.character(packageVersion("plotly")), "\n")
+
+# Parameters
+seurat_integrated <- "Pan_neuro_both_reannotated_GFP_curated_reintegrated_SCENIC.rds"
+SCENIC_regulons_path <- "Pan_neuro_both_reannotated_GFP_curated_reintegrated_regulons_aucell.tsv"
+#SCENIC_regulons_path <- "Pan_neuro_both_reannotated_GFP_curated_reintegrated_regulons_aucell_298_weigthed_nes0.5.tsv"
+SCENIC_regulons_binarized_path <- "Pan_neuro_both_reannotated_GFP_curated_reintegrated_regulons_aucell_binarized.tsv"
+seurat_output <- "Pan_neuro_both_reannotated_GFP_curated_reintegrated_SCENIC_binarized.rds"
+AUC_values_path <- "Pan_neuro_both_reannotated_GFP_curated_reintegrated_117Oxphos_AUCell_auc.tsv"
+marker_gene_output <- "Pan_neuro_both_reannotated_GFP_curated_reintegrated_marker_genes.tsv"
+marker_regulon_output <- "Pan_neuro_both_reannotated_GFP_curated_reintegrated_marker_regulons.tsv"
+marker_regulon_output_CTRL <- "Pan_neuro_both_reannotated_GFP_curated_reintegrated_marker_regulons_CTRL.tsv"
+marker_regulon_output_ND75KD <- "Pan_neuro_both_reannotated_GFP_curated_reintegrated_marker_regulons_ND75KD.tsv"
+
+# Color-blind friendly palette 3-colors
+cbPalette <- c("#E69F00", "#000000", "#56B4E9")
+steinPalette <- c("#80C980", "#BDADD4", "#376CB0", "#FBBF85", "#F0027E")
+
+# Random seed
+set.seed(42)
+
+# Display
+display.boxplot.gene <- function(obj, gene){
+  # Extracting the relevant metadata
+  metadata <- as.data.frame(obj@assays$RNA@data[gene, ])
+  colnames(metadata) <- "gene_exp"
+  metadata$annotation_emma_merged <- obj$annotation_emma_merged[rownames(metadata)]
+  
+  # Calculating median values of gene for each group
+  median_values <- tapply(metadata$gene_exp, metadata$annotation_emma_merged, median)
+  mean_values <- tapply(metadata$gene_exp, metadata$annotation_emma_merged, mean)
+  summary_values <- data.frame(row.names = names(median_values), median = median_values, mean = mean_values[names(median_values)])
+  summary_values <- summary_values[with(summary_values, order(median, mean)),]
+  
+  # Sorting the metadata based on median values
+  metadata$annotation_emma_merged <- factor(metadata$annotation_emma_merged, levels = rownames(summary_values))
+  
+  # Plotting a violin plot using ggplot2
+  p <- ggplot(metadata, aes(x = annotation_emma_merged, y = gene_exp)) +
+    geom_boxplot() +
+    theme_minimal() +
+    theme(legend.position = "none", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    labs(x = "Seurat Clusters / Emma's Annotation", y = gene) + ggtitle("Boxplot based on gene expression")
+  p
+}
+
+display.boxplot.gene.per.lib <- function(obj, gene){
+  p <- list()
+  for(exp in c("Pan_neuro_control", "Pan_neuro_ND75KD")){
+    # Extracting the relevant metadata
+    metadata <- as.data.frame(obj@assays$RNA@data[gene, obj$orig.ident == exp])
+    colnames(metadata) <- "gene_exp"
+    metadata$annotation_emma_merged <- obj$annotation_emma_merged[rownames(metadata)]
+    
+    # Calculating median values of gene for each group
+    median_values <- tapply(metadata$gene_exp, metadata$annotation_emma_merged, median)
+    mean_values <- tapply(metadata$gene_exp, metadata$annotation_emma_merged, mean)
+    summary_values <- data.frame(row.names = names(median_values), median = median_values, mean = mean_values[names(median_values)])
+    summary_values <- summary_values[with(summary_values, order(median, mean)),]
+    
+    # Sorting the metadata based on median values
+    metadata$annotation_emma_merged <- factor(metadata$annotation_emma_merged, levels = rownames(summary_values))
+    
+    # Plotting a violin plot using ggplot2
+    p[[exp]] <- ggplot(metadata, aes(x = annotation_emma_merged, y = gene_exp)) +
+      geom_boxplot() +
+      theme_minimal() +
+      theme(legend.position = "none", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+      labs(x = "Seurat Clusters / Emma's Annotation", y = gene) + ggtitle(exp)
+  }
+  ggarrange(plotlist = p, nrow = 2, ncol = 1)
+}
+
+display.boxplot.metadata <- function(obj, metadata_name){
+  # Extracting the relevant metadata
+  metadata <- as.data.frame(obj@meta.data[,metadata_name,drop=F])
+  colnames(metadata) <- "metadata_values"
+  metadata$annotation_emma_merged <- obj$annotation_emma_merged[rownames(metadata)]
+  
+  # Calculating median values of metadata for each group
+  median_values <- tapply(metadata$metadata_values, metadata$annotation_emma_merged, median)
+  mean_values <- tapply(metadata$metadata_values, metadata$annotation_emma_merged, mean)
+  summary_values <- data.frame(row.names = names(median_values), median = median_values, mean = mean_values[names(median_values)])
+  summary_values <- summary_values[with(summary_values, order(median, mean)),]
+  
+  # Sorting the metadata based on median values
+  metadata$annotation_emma_merged <- factor(metadata$annotation_emma_merged, levels = rownames(summary_values))
+  
+  # Plotting a violin plot using ggplot2
+  p <- ggplot(metadata, aes(x = annotation_emma_merged, y = metadata_values)) +
+    geom_boxplot() +
+    theme_minimal() +
+    theme(legend.position = "none", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    labs(x = "Seurat Clusters / Emma's Annotation", y = metadata_name) + ggtitle("Boxplot based on Regulon activity")
+  p
+}
+
+display.boxplot.metadata.per.lib <- function(obj, metadata_name){
+  p <- list()
+  for(exp in c("Pan_neuro_control", "Pan_neuro_ND75KD")){
+    # Extracting the relevant metadata
+    metadata <- as.data.frame(obj@meta.data[obj$orig.ident == exp,metadata_name,drop=F])
+    colnames(metadata) <- "metadata_values"
+    metadata$annotation_emma_merged <- obj$annotation_emma_merged[rownames(metadata)]
+    
+    # Calculating median values of metadata for each group
+    median_values <- tapply(metadata$metadata_values, metadata$annotation_emma_merged, median)
+    mean_values <- tapply(metadata$metadata_values, metadata$annotation_emma_merged, mean)
+    summary_values <- data.frame(row.names = names(median_values), median = median_values, mean = mean_values[names(median_values)])
+    summary_values <- summary_values[with(summary_values, order(median, mean)),]
+    
+    # Sorting the metadata based on median values
+    metadata$annotation_emma_merged <- factor(metadata$annotation_emma_merged, levels = rownames(summary_values))
+    
+    # Plotting a violin plot using ggplot2
+    p[[exp]] <- ggplot(metadata, aes(x = annotation_emma_merged, y = metadata_values)) +
+      geom_boxplot() +
+      theme_minimal() +
+      theme(legend.position = "none", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+      labs(x = "Seurat Clusters / Emma's Annotation", y = metadata_name) + ggtitle(exp)
+  }
+  ggarrange(plotlist = p, nrow = 2, ncol = 1)
+}
+
+display.boxplot.metadata.binarized <- function(obj, metadata_name){
+  # Extracting the relevant metadata
+  metadata <- as.data.frame(obj@meta.data[,metadata_name,drop=F])
+  colnames(metadata) <- "metadata_values"
+  metadata$annotation_emma_merged <- obj$annotation_emma_merged[rownames(metadata)]
+  
+  # Calculating pc values activated for each group
+  pc_activated_values <- tapply(metadata$metadata_values, metadata$annotation_emma_merged, FUN = function(x) (100 * sum(x)) / length(x))
+  summary_values <- data.frame(row.names = names(pc_activated_values), annotation = names(pc_activated_values), pc_activated = pc_activated_values, pc_non_activated = 100 - pc_activated_values)
+  summary_values <- summary_values[with(summary_values, order(pc_activated)),]
+  order_annot <- summary_values$annotation
+  summary_values <- reshape2::melt(summary_values, id = "annotation")
+  summary_values$annotation <- factor(summary_values$annotation, levels = order_annot)
+  summary_values$variable <- factor(summary_values$variable, levels = c("pc_non_activated", "pc_activated"))
+  
+  # Plotting a violin plot using ggplot2
+  p <- ggplot(summary_values, aes(x = annotation, y = value, fill = variable)) +
+    geom_bar(position="stack", stat="identity") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    labs(x = "Seurat Clusters / Emma's Annotation", y = metadata_name) + ggtitle("Barplot based on Regulon binarized activity")
+  p
+}
+
+display.boxplot.metadata.binarized.per.lib <- function(obj, metadata_name){
+  p <- list()
+  for(exp in c("Pan_neuro_control", "Pan_neuro_ND75KD")){
+    # Extracting the relevant metadata
+    metadata <- as.data.frame(obj@meta.data[obj$orig.ident == exp,metadata_name,drop=F])
+    colnames(metadata) <- "metadata_values"
+    metadata$annotation_emma_merged <- obj$annotation_emma_merged[rownames(metadata)]
+    
+    # Calculating pc values activated for each group
+    pc_activated_values <- tapply(metadata$metadata_values, metadata$annotation_emma_merged, FUN = function(x) (100 * sum(x)) / length(x))
+    summary_values <- data.frame(row.names = names(pc_activated_values), annotation = names(pc_activated_values), pc_activated = pc_activated_values, pc_non_activated = 100 - pc_activated_values)
+    summary_values <- summary_values[with(summary_values, order(pc_activated)),]
+    order_annot <- summary_values$annotation
+    summary_values <- reshape2::melt(summary_values, id = "annotation")
+    summary_values$annotation <- factor(summary_values$annotation, levels = order_annot)
+    summary_values$variable <- factor(summary_values$variable, levels = c("pc_non_activated", "pc_activated"))
+    
+    # Plotting a violin plot using ggplot2
+    p[[exp]] <- ggplot(summary_values, aes(x = annotation, y = value, fill = variable)) +
+    geom_bar(position="stack", stat="identity") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    labs(x = "Seurat Clusters / Emma's Annotation", y = metadata_name) + ggtitle("Barplot based on Regulon binarized activity")
+  p
+  }
+  ggarrange(plotlist = p, nrow = 2, ncol = 1)
+}
+
+# Old VlnPlots (replaced by boxplot)
+
+#```{r echo = F, include=FALSE, results = 'hide', fig.width=13, fig.height=6}
+#VlnPlot(data.seurat, features = "Imp", group.by = "annotation_emma_merged", sort = "decreasing") + theme(legend.position = 'none', axis.text.x = element_text(size = 8, angle = 90, hjust = 1, vjust = 0.5))
+#```
+
+#```{r echo = F, include=FALSE, results = 'hide', fig.width=20, fig.height=6}
+#VlnPlot(data.seurat, features = "Imp", group.by = "annotation_emma_merged", sort = "decreasing", split.by = "orig.ident", split.plot = T) + theme(axis.text.x = element_text(size = 8, angle = 90, hjust = 1, vjust = 0.5))
+#```
+
+#```{r echo = F, include=FALSE, results = 'hide', fig.width=10, fig.height=10}
+#p1 <- VlnPlot(data.seurat[,data.seurat$orig.ident == "Pan_neuro_control"], features = "Imp", group.by = "annotation_emma_merged", sort = "decreasing") + theme(axis.text.x = element_text(size = 8, angle = 90, hjust = 1, vjust = 0.5)) + NoLegend()
+#p2 <- VlnPlot(data.seurat[,data.seurat$orig.ident == "Pan_neuro_ND75KD"], features = "Imp", group.by = "annotation_emma_merged", sort = "decreasing") + theme(axis.text.x = element_text(size = 8, angle = 90, hjust = 1, vjust = 0.5)) + NoLegend()
+#ggarrange(p1, p2, nrow = 2, ncol = 1)
+#```
+```
+
+## I. Reading Seurat object
+
+First step is to read the Seurat objects, previously created
+
+```{r}
+message("Loading Seurat object...")
+data.seurat <- readRDS(seurat_integrated)
+message(ncol(data.seurat), " cells were loaded")
+message(nrow(data.seurat), " genes were loaded")
+```
+
+```{r, fig.height = 12, fig.width = 13}
+DimPlot(data.seurat, reduction = "tsne_harmony", label = TRUE, pt.size = 0.5, group.by = "annotation_emma_merged") + NoLegend()
+```
+
+```{r, fig.height = 12, fig.width = 13}
+DimPlot(data.seurat, reduction = "umap_harmony", label = TRUE, pt.size = 0.5, group.by = "annotation_emma_merged") + NoLegend()
+```
+
+To check if some annotations have different ratio of each library, I plot the ratio of cells per annotation
+
+```{r, fig.height = 7, fig.width = 15}
+data.barplot <- data.frame(annotation_emma_merged = -1, library = -1, nbcells = -1)
+
+for(annot in names(table(data.seurat@meta.data$annotation_emma_merged))){
+  which.cells <- (data.seurat@meta.data$annotation_emma_merged == annot)
+  if(sum(which.cells) > 1) {
+  data.barplot <- rbind(data.barplot, setNames(cbind(annot, data.frame(table(data.seurat@meta.data$orig.ident[which.cells]))), names(data.barplot)), deparse.level = 0)
+  }
+}
+data.barplot <- data.barplot[-1,]
+data.barplot$library <- factor(data.barplot$library, levels = c("Pan_neuro_ND75KD", "Pan_neuro_control"))
+
+pc_vector <- rep(0, length(unique(data.barplot$annotation_emma_merged)))
+names(pc_vector) <- unique(data.barplot$annotation_emma_merged)
+for(annot in names(pc_vector)){
+  ctrl = data.barplot[data.barplot$annotation_emma_merged == annot & data.barplot$library == "Pan_neuro_control", "nbcells"]
+  nd75kd = data.barplot[data.barplot$annotation_emma_merged == annot & data.barplot$library == "Pan_neuro_ND75KD", "nbcells"]
+  if(length(ctrl) == 0) ctrl = 0
+  if(length(nd75kd) == 0) nd75kd = 0
+  pc_vector[annot] <- ctrl / (ctrl + nd75kd)
+}
+pc_vector <- sort(pc_vector, decreasing = T)
+
+data.barplot$annotation_emma_merged <- factor(data.barplot$annotation_emma_merged, levels = names(pc_vector))
+
+ggplot(data.barplot, aes(fill=library, y=nbcells, x=annotation_emma_merged)) + geom_bar(position="fill", stat="identity") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + labs(x = "Seurat Clusters / Emma's Annotation", y = "Percent cells") + ggtitle("Barplot based on ratio of cells per annotation")
+```
+
+## II.1. Reading regulons values from binarized SCENIC output
+
+```{r}
+data.scenic <- fread(SCENIC_regulons_binarized_path, data.table = F)
+rownames(data.scenic) <- data.scenic$Cell
+data.scenic <- data.scenic[,-1]
+data.scenic
+```
+Updating colnames
+
+```{r}
+colnames(data.scenic) <- gsub(x = colnames(data.scenic), pattern = "\\(\\+\\)", replacement = "_activating_regulon_binarized")
+colnames(data.scenic) <- gsub(x = colnames(data.scenic), pattern = "\\(\\-\\)", replacement = "_repressing_regulon_binarized")
+colnames(data.scenic) <- paste0("SCENIC_", colnames(data.scenic))
+data.scenic
+```
+
+## II.2 Adding to Seurat object:
+
+```{r}
+# Adding each column as a metadata
+for(regulon in colnames(data.scenic)){
+  data.seurat@meta.data[[regulon]] <- data.scenic[colnames(data.seurat), regulon]
+}
+```
+
+### Compute UMAP on regulon matrix
+
+```{r, fig.height = 8, fig.width = 12}
+# Adding whole matrix as an embedding
+colnames(data.scenic) <- paste0("SCENIC_", 1:ncol(data.scenic))
+data.seurat@reductions[['SCENICbinarized']] <- CreateDimReducObject(embeddings = as.matrix(data.scenic), key = 'SCENICbinarized_', assay = 'RNA')
+
+# Compute UMAP on it
+data.seurat <- RunUMAP(object = data.seurat, reduction.name = "SCENICbinarizedumap", reduction = "SCENICbinarized", dims = 1:ncol(data.scenic), reduction.key = "SCENICbinarizedumap_", assay = 'RNA', n.neighbors = 10L, metric = "correlation", min.dist = 0.4)
+DimPlot(data.seurat, reduction = "SCENICbinarizedumap", label = TRUE, pt.size = 0.5, group.by = "annotation_emma_merged") + NoLegend()
+```
+
+### Compute t-SNE on regulon matrix
+
+```{r, fig.height = 8, fig.width = 12}
+# Compute t-SNE on it
+data.seurat <- RunTSNE(object = data.seurat, reduction.name = "SCENICbinarizedtsne", reduction = "SCENICbinarized", dims = 1:ncol(data.scenic), reduction.key = "SCENICbinarizedtsne_", assay = 'RNA')
+DimPlot(data.seurat, reduction = "SCENICbinarizedtsne", label = TRUE, pt.size = 0.5, group.by = "annotation_emma_merged") + NoLegend()
+```
+
+## II.3. Displaying regulons / gene expressions
+
+### Crc (Atf4)
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("crc", "SCENIC_crc_activating_regulon", "SCENIC_crc_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedtsne", features = c("crc", "SCENIC_crc_activating_regulon", "SCENIC_crc_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "tsne_harmony", features = c("crc", "SCENIC_crc_activating_regulon", "SCENIC_crc_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 12}
+display.boxplot.gene(data.seurat, "crc")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.gene.per.lib(data.seurat, "crc")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata(data.seurat, "SCENIC_crc_activating_regulon")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.per.lib(data.seurat, "SCENIC_crc_activating_regulon")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata.binarized(data.seurat, "SCENIC_crc_activating_regulon_binarized")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.binarized.per.lib(data.seurat, "SCENIC_crc_activating_regulon_binarized")
+```
+
+### Sima (HIF1alpha)
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("sima", "SCENIC_sima_activating_regulon", "SCENIC_sima_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedtsne", features = c("sima", "SCENIC_sima_activating_regulon", "SCENIC_sima_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "tsne_harmony", features = c("sima", "SCENIC_sima_activating_regulon", "SCENIC_sima_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 12}
+display.boxplot.gene(data.seurat, "sima")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.gene.per.lib(data.seurat, "sima")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata(data.seurat, "SCENIC_sima_activating_regulon")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.per.lib(data.seurat, "SCENIC_sima_activating_regulon")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata.binarized(data.seurat, "SCENIC_sima_activating_regulon_binarized")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.binarized.per.lib(data.seurat, "SCENIC_sima_activating_regulon_binarized")
+```
+
+
+### Repo
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("repo", "SCENIC_repo_activating_regulon", "SCENIC_repo_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedtsne", features = c("repo", "SCENIC_repo_activating_regulon", "SCENIC_repo_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "tsne_harmony", features = c("repo", "SCENIC_repo_activating_regulon", "SCENIC_repo_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 12}
+display.boxplot.gene(data.seurat, "repo")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.gene.per.lib(data.seurat, "repo")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata(data.seurat, "SCENIC_repo_activating_regulon")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.per.lib(data.seurat, "SCENIC_repo_activating_regulon")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata.binarized(data.seurat, "SCENIC_repo_activating_regulon_binarized")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.binarized.per.lib(data.seurat, "SCENIC_repo_activating_regulon_binarized")
+```
+
+### Dati
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("dati", "SCENIC_dati_activating_regulon", "SCENIC_dati_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedtsne", features = c("dati", "SCENIC_dati_activating_regulon", "SCENIC_dati_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "tsne_harmony", features = c("dati", "SCENIC_dati_activating_regulon", "SCENIC_dati_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 12}
+display.boxplot.gene(data.seurat, "dati")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.gene.per.lib(data.seurat, "dati")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata(data.seurat, "SCENIC_dati_activating_regulon")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.per.lib(data.seurat, "SCENIC_dati_activating_regulon")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata.binarized(data.seurat, "SCENIC_dati_activating_regulon_binarized")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.binarized.per.lib(data.seurat, "SCENIC_dati_activating_regulon_binarized")
+```
+
+### Pros
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("pros", "SCENIC_pros_activating_regulon", "SCENIC_pros_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedtsne", features = c("pros", "SCENIC_pros_activating_regulon", "SCENIC_pros_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "tsne_harmony", features = c("pros", "SCENIC_pros_activating_regulon", "SCENIC_pros_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 12}
+display.boxplot.gene(data.seurat, "pros")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.gene.per.lib(data.seurat, "pros")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata(data.seurat, "SCENIC_pros_activating_regulon")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.per.lib(data.seurat, "SCENIC_pros_activating_regulon")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata.binarized(data.seurat, "SCENIC_pros_activating_regulon_binarized")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.binarized.per.lib(data.seurat, "SCENIC_pros_activating_regulon_binarized")
+```
+
+### Scro
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("scro", "SCENIC_scro_activating_regulon", "SCENIC_scro_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedtsne", features = c("scro", "SCENIC_scro_activating_regulon", "SCENIC_scro_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "tsne_harmony", features = c("scro", "SCENIC_scro_activating_regulon", "SCENIC_scro_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 12}
+display.boxplot.gene(data.seurat, "scro")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.gene.per.lib(data.seurat, "scro")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata(data.seurat, "SCENIC_scro_activating_regulon")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.per.lib(data.seurat, "SCENIC_scro_activating_regulon")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata.binarized(data.seurat, "SCENIC_scro_activating_regulon_binarized")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.binarized.per.lib(data.seurat, "SCENIC_scro_activating_regulon_binarized")
+```
+
+### Imp & elav genes
+
+```{r, fig.height = 5, fig.width = 12}
+FeaturePlot(data.seurat, reduction = "SCENICtsne", features = c("Imp", "elav"), order = T, pt.size = 0.5)
+```
+
+```{r, fig.height = 5, fig.width = 12}
+FeaturePlot(data.seurat, reduction = "tsne_harmony", features = c("Imp", "elav"), order = T, pt.size = 0.5)
+```
+
+```{r, fig.height = 5, fig.width = 12}
+display.boxplot.gene(data.seurat, "Imp")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.gene.per.lib(data.seurat, "Imp")
+```
+
+```{r, fig.height = 5, fig.width = 12}
+display.boxplot.gene(data.seurat, "elav")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.gene.per.lib(data.seurat, "elav")
+```
+
+## III.1. Predicting groups
+
+```{r, fig.width=18, fig.height=24}
+plot.list <- list()
+for(cluster in levels(data.seurat$seurat_clusters)){
+  data.tmp <- as.data.frame(t(data.seurat@assays$RNA@data[c("Imp", "pros", "dati", "scro"), data.seurat$seurat_clusters == cluster]))
+  data.tmp$pros_reg <- data.seurat@meta.data[rownames(data.tmp), "SCENIC_pros_activating_regulon"]
+  data.tmp$dati_reg <- data.seurat@meta.data[rownames(data.tmp), "SCENIC_dati_activating_regulon"]
+  data.tmp$scro_reg <- data.seurat@meta.data[rownames(data.tmp), "SCENIC_scro_activating_regulon"]
+  data.tmp <- reshape2::melt(data.tmp, measure.vars = c("Imp", "pros", "pros_reg", "dati", "dati_reg", "scro", "scro_reg"), value.name = "expression", variable.name = "gene")
+  plot.list[[cluster]] <- ggplot(data.tmp, aes(x = gene, y = expression)) + geom_boxplot() + ggtitle(paste0("Cluster ", cluster)) + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+}
+ggarrange(plotlist = plot.list, ncol = 9, nrow = 10)
+```
+
+### Genes or regulons?
+
+```{r}
+# First, build non-zero distribution for each marker gene
+global.imp <- data.seurat@assays$RNA@data["Imp",]
+global.imp <- global.imp[global.imp != 0]
+hist(global.imp)
+global.pros <- data.seurat@assays$RNA@data["pros",]
+global.pros <- global.pros[global.pros != 0]
+hist(global.pros)
+global.dati <- data.seurat@assays$RNA@data["dati",]
+global.dati <- global.dati[global.dati != 0]
+hist(global.dati)
+global.scro <- data.seurat@assays$RNA@data["scro",]
+global.scro <- global.scro[global.scro != 0]
+hist(global.scro)
+global.repo <- data.seurat@assays$RNA@data["repo",]
+global.repo <- global.repo[global.repo != 0]
+hist(global.repo)
+```
+
+## III.2. Gene-based
+
+All gene distribution look normal-ish. But it's not the case for the regulon distribution.
+If we work with gene-expression only, then for each cell, I would compute the p-values of belonging to the corresponding normal distribution.
+
+```{r}
+label <- rep("Ambiguous", ncol(data.seurat))
+mn_imp <- mean(global.imp); sd_imp <- sd(global.imp); mn_pros <- mean(global.pros); sd_pros <- sd(global.pros); mn_dati <- mean(global.dati); sd_dati <- sd(global.dati); mn_scro <- mean(global.scro); sd_scro <- sd(global.scro); mn_repo <- mean(global.repo); sd_repo <- sd(global.repo)
+imp_values <- data.seurat@assays$RNA@data["Imp",]; pros_values <- data.seurat@assays$RNA@data["pros",]; dati_values <- data.seurat@assays$RNA@data["dati",]; scro_values <- data.seurat@assays$RNA@data["scro",]; repo_values <- data.seurat@assays$RNA@data["repo",]
+for(cell in 1:ncol(data.seurat)){
+  p_imp <- pnorm(q = imp_values[cell], mean = mn_imp, sd = sd_imp)
+  p_pros <- pnorm(q = pros_values[cell], mean = mn_pros, sd = sd_pros)
+  p_dati <- pnorm(q = dati_values[cell], mean = mn_dati, sd = sd_dati)
+  p_scro <- pnorm(q = scro_values[cell], mean = mn_scro, sd = sd_scro)
+  p_repo <- pnorm(q = repo_values[cell], mean = mn_repo, sd = sd_repo)
+  if(max(p_imp, p_pros, p_dati, p_scro, p_repo) == p_scro){
+    label[cell] <- "Optic lobe"
+  } else if(max(p_imp, p_pros, p_dati, p_scro, p_repo) == p_repo){
+    label[cell] <- "Glia"
+  } else if(max(p_imp, p_pros, p_dati, p_scro) == p_imp){
+    label[cell] <- "Central Brain B"
+  } else label[cell] <- "Central Brain A"
+}
+data.seurat$Neuron_category <- factor(label, levels = c("Central Brain A", "Central Brain B", "Optic lobe", "Glia", "Other"))
+table(data.seurat$Neuron_category)
+```
+
+```{r, fig.height=7, fig.width=9}
+DimPlot(data.seurat, reduction = "tsne_harmony", pt.size = 0.5, group.by = "Neuron_category", cols = steinPalette)
+```
+
+```{r, fig.height=6, fig.width=9}
+DimPlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, group.by = "Neuron_category", cols = steinPalette)
+```
+
+```{r, fig.height=6, fig.width=9}
+DimPlot(data.seurat, reduction = "SCENICbinarizedtsne", pt.size = 0.5, group.by = "Neuron_category", cols = steinPalette)
+```
+
+
+## III.3. Regulon-based
+
+All gene distribution look normal-ish. But regulons are binarized.
+
+```{r}
+label <- rep("Ambiguous", ncol(data.seurat))
+mn_imp <- mean(global.imp)
+sd_imp <- sd(global.imp)
+imp_values <- data.seurat@assays$RNA@data["Imp",]
+for(cell in 1:ncol(data.seurat)){
+  p_imp <- pnorm(q = imp_values[cell], mean = mn_imp, sd = sd_imp)
+  if(data.seurat@meta.data$SCENIC_scro_activating_regulon_binarized[cell] == 1){
+    label[cell] <- "Optic lobe"
+  } else if(data.seurat@meta.data$SCENIC_repo_activating_regulon_binarized[cell] == 1){
+    label[cell] <- "Glia"
+  } else if(data.seurat@meta.data$SCENIC_dati_activating_regulon_binarized[cell] == 1 & data.seurat@meta.data$SCENIC_pros_activating_regulon_binarized[cell] == 1){
+    label[cell] <- "Central Brain A"
+  } else label[cell] <- "Central Brain B"
+}
+data.seurat$Neuron_category <- factor(label, levels = c("Central Brain A", "Central Brain B", "Optic lobe", "Glia", "Other"))
+table(data.seurat$Neuron_category)
+```
+
+```{r, fig.height=7, fig.width=9}
+DimPlot(data.seurat, reduction = "tsne_harmony", pt.size = 0.5, group.by = "Neuron_category", cols = steinPalette)
+```
+
+```{r, fig.height=6, fig.width=9}
+DimPlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, group.by = "Neuron_category", cols = steinPalette)
+```
+
+```{r, fig.height=6, fig.width=9}
+DimPlot(data.seurat, reduction = "SCENICbinarizedtsne", pt.size = 0.5, group.by = "Neuron_category", cols = steinPalette)
+```
+
+## IV.1. Reading OXPHOS AUC values from AUCell (using the 117 OXPHOS genes from Flybase GO-BP GO:0006119 : oxidative phosphorylation)
+
+```{r}
+data.auc <- fread(AUC_values_path, data.table = F)
+rownames(data.auc) <- data.auc$Cell
+data.auc
+```
+## IV.2. Adding to Seurat object:
+
+```{r}
+data.seurat$AUC_OXPHOS_117_Flybase <- data.auc[colnames(data.seurat), "AUC"]
+hist(data.seurat$AUC_OXPHOS_117_Flybase)
+```
+
+## IV.3. Plot
+
+```{r, fig.height=6, fig.width=8}
+FeaturePlot(data.seurat, reduction = "umap_harmony", pt.size = 0.5, order = T, features = "AUC_OXPHOS_117_Flybase")
+```
+
+```{r, fig.height=6, fig.width=8}
+FeaturePlot(data.seurat, reduction = "tsne_harmony", order = T, pt.size = 0.5, features = "AUC_OXPHOS_117_Flybase")
+```
+
+```{r, fig.height=6, fig.width=8}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", order = T, pt.size = 0.5, features = "AUC_OXPHOS_117_Flybase")
+```
+
+```{r, fig.height=6, fig.width=8}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedtsne", order = T, pt.size = 0.5, features = "AUC_OXPHOS_117_Flybase")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata(data.seurat, "AUC_OXPHOS_117_Flybase")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.per.lib(data.seurat, "AUC_OXPHOS_117_Flybase")
+```
+
+## V. Save Seurat object
+
+```{r}
+saveRDS(data.seurat, file = seurat_output)
+```
+
+## VI. Differentially expressed genes
+
+```{r}
+Idents(data.seurat) <- "seurat_clusters_harmony_res.4"
+all.markers <- FindAllMarkers(data.seurat, verbose = F)
+fwrite(all.markers, file = marker_gene_output, sep = "\t")
+all.markers
+```
+
+## VII. Differentially activated regulons (based on non-binarized data)
+
+```{r}
+# 1. Put SCENIC regulon in a new assay
+data.scenic <- fread(SCENIC_regulons_path, data.table = F)
+rownames(data.scenic) <- data.scenic$Cell
+data.scenic <- data.scenic[,-1]
+colnames(data.scenic) <- gsub(x = colnames(data.scenic), pattern = "\\(\\+\\)", replacement = "-activating-regulon")
+colnames(data.scenic) <- gsub(x = colnames(data.scenic), pattern = "\\(\\-\\)", replacement = "-repressing-regulon")
+colnames(data.scenic) <- paste0("SCENIC-", colnames(data.scenic))
+data.seurat@assays["SCENIC"] = CreateAssayObject(data = t(data.scenic)[,colnames(data.seurat)], check.matrix = F)
+
+# 2. Run DE
+Idents(data.seurat) <- "seurat_clusters_harmony_res.4"
+all.markers <- FindAllMarkers(data.seurat, assay = "SCENIC", slot = "data", verbose = F)
+fwrite(all.markers, file = marker_regulon_output, sep = "\t")
+all.markers
+```
+
+### DE in cluster 2
+
+sima and crc are on the second page.
+
+```{r}
+subset(all.markers, cluster == "2")
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("RpS10a", "SCENIC_RpS10a_activating_regulon", "SCENIC_RpS10a_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("Dgp-1", "SCENIC_Dgp-1_activating_regulon", "SCENIC_Dgp-1_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("Myc", "SCENIC_Myc_activating_regulon", "SCENIC_Myc_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+### DE in cluster 23
+
+sima is on the first page, and crc is on the second page.
+
+```{r}
+subset(all.markers, cluster == "23")
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("Hr39", "SCENIC_Hr39_activating_regulon", "SCENIC_Hr39_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("sage", "SCENIC_sage_activating_regulon", "SCENIC_sage_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("srl", "SCENIC_srl_activating_regulon", "SCENIC_srl_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+
+## VIII. Differentially activated regulons in Pan neuro CTRL (based on non-binarized data)
+
+```{r}
+# 1. Subset the object
+Idents(data.seurat) <- "orig.ident"
+data.seurat@assays["SCENIC"] <- NULL
+data.seurat.ctrl <- subset(x = data.seurat, idents = c("Pan_neuro_control"))
+
+# 2. Put SCENIC regulon in a new assay
+data.scenic <- fread(SCENIC_regulons_path, data.table = F)
+rownames(data.scenic) <- data.scenic$Cell
+data.scenic <- data.scenic[,-1]
+colnames(data.scenic) <- gsub(x = colnames(data.scenic), pattern = "\\(\\+\\)", replacement = "-activating-regulon")
+colnames(data.scenic) <- gsub(x = colnames(data.scenic), pattern = "\\(\\-\\)", replacement = "-repressing-regulon")
+colnames(data.scenic) <- paste0("SCENIC-", colnames(data.scenic))
+data.seurat.ctrl@assays["SCENIC"] = CreateAssayObject(data = t(data.scenic)[,colnames(data.seurat.ctrl)], check.matrix = F)
+
+# 3. Run DE
+Idents(data.seurat.ctrl) <- "seurat_clusters_harmony_res.4"
+all.markers <- FindAllMarkers(data.seurat.ctrl, assay = "SCENIC", slot = "data", verbose = F)
+fwrite(all.markers, file = marker_regulon_output_CTRL, sep = "\t")
+all.markers
+```
+
+### DE in cluster 2
+
+sima and crc are on the second page.
+
+```{r}
+subset(all.markers, cluster == "2")
+```
+
+Nothing is significant...
+Cluster 2 has only 4 cells for CTRL samples.
+
+### DE in cluster 23
+
+```{r}
+subset(all.markers, cluster == "23")
+```
+Was not run because cluster 23 has less than 3 cells for CTRL samples (2 cells)
+
+### What about clusters 20 & 37?
+
+```{r, fig.height = 5, fig.width = 20}
+data.seurat$seurat_cluster_20 <- (data.seurat$seurat_clusters_harmony_res.4 == "20")
+data.seurat$seurat_cluster_2 <- (data.seurat$seurat_clusters_harmony_res.4 == "2")
+data.seurat$seurat_cluster_23 <- (data.seurat$seurat_clusters_harmony_res.4 == "23")
+data.seurat$seurat_cluster_37 <- (data.seurat$seurat_clusters_harmony_res.4 == "37")
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("seurat_cluster_2", "seurat_cluster_23", "seurat_cluster_20", "seurat_cluster_37"), order = T, pt.size = 0.5, ncol = 4)
+```
+
+```{r, fig.height = 5, fig.width = 20}
+data.seurat$seurat_cluster_20 <- (data.seurat$annotation_emma_merged == "20")
+data.seurat$seurat_cluster_2 <- (data.seurat$annotation_emma_merged == "2")
+data.seurat$seurat_cluster_23 <- (data.seurat$annotation_emma_merged == "23")
+data.seurat$seurat_cluster_37 <- (data.seurat$annotation_emma_merged == "37")
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("seurat_cluster_2", "seurat_cluster_23", "seurat_cluster_20", "seurat_cluster_37"), order = T, pt.size = 0.5, ncol = 4)
+```
+
+It's a simple bias due to the annotation that was performed on the non-integrated datasets. These "clusters" are not cluster anymore.
+
+## IX. Differentially activated regulons in Pan neuro ND75KD (based on non-binarized data)
+
+```{r}
+# 1. Subset the object
+Idents(data.seurat) <- "orig.ident"
+data.seurat.ND75KD <- subset(x = data.seurat, idents = c("Pan_neuro_ND75KD"))
+
+# 2. Put SCENIC regulon in a new assay
+data.scenic <- fread(SCENIC_regulons_path, data.table = F)
+rownames(data.scenic) <- data.scenic$Cell
+data.scenic <- data.scenic[,-1]
+colnames(data.scenic) <- gsub(x = colnames(data.scenic), pattern = "\\(\\+\\)", replacement = "-activating-regulon")
+colnames(data.scenic) <- gsub(x = colnames(data.scenic), pattern = "\\(\\-\\)", replacement = "-repressing-regulon")
+colnames(data.scenic) <- paste0("SCENIC-", colnames(data.scenic))
+data.seurat.ND75KD@assays["SCENIC"] = CreateAssayObject(data = t(data.scenic)[,colnames(data.seurat.ND75KD)], check.matrix = F)
+
+# 3. Run DE
+Idents(data.seurat.ND75KD) <- "seurat_clusters_harmony_res.4"
+all.markers <- FindAllMarkers(data.seurat.ND75KD, assay = "SCENIC", slot = "data", verbose = F)
+fwrite(all.markers, file = marker_regulon_output_ND75KD, sep = "\t")
+all.markers
+```
+
+### DE in cluster 2
+
+sima and crc are on the second page.
+
+```{r}
+subset(all.markers, cluster == "2")
+```
+
+Results for cluster 2 are unchanged with the integrated calculation.
+Here follows, only displaying ND75KD cells:
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat.ND75KD, reduction = "SCENICbinarizedumap", features = c("RpS10a", "SCENIC_RpS10a_activating_regulon", "SCENIC_RpS10a_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat.ND75KD, reduction = "SCENICbinarizedumap", features = c("Dgp-1", "SCENIC_Dgp-1_activating_regulon", "SCENIC_Dgp-1_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat.ND75KD, reduction = "SCENICbinarizedumap", features = c("Myc", "SCENIC_Myc_activating_regulon", "SCENIC_Myc_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+### DE in cluster 23
+
+```{r}
+subset(all.markers, cluster == "23")
+```
+
+Same conclusion for cluster 23.
+Here follows, only displaying ND75KD cells:
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat.ND75KD, reduction = "SCENICbinarizedumap", features = c("Hr39", "SCENIC_Hr39_activating_regulon", "SCENIC_Hr39_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat.ND75KD, reduction = "SCENICbinarizedumap", features = c("sage", "SCENIC_sage_activating_regulon", "SCENIC_sage_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat.ND75KD, reduction = "SCENICbinarizedumap", features = c("srl", "SCENIC_srl_activating_regulon", "SCENIC_srl_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```

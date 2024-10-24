@@ -1,0 +1,68 @@
+cluster	marker_gene	emma_annotation
+3	VGlut	glutamatergic neurons
+6	CG8312	epithelial cell
+7	Vsx1	transmedullary Y neuron TmY8
+8	lncRNA:roX1	cone cell
+9	lncRNA:roX1	photoreceptors
+10	eEF1alpha1	photoreceptors
+11	AdamTS-B	cone cell
+12	CG31221	cholinergic neurons
+13	bt	skeletal muscle of head 
+14	vg	gabaergic neurons
+16	CG11294	medullary intrinsic neuron Mi4
+18	gl	outer photoreceptor cell
+19	CG10345	epithelial cell
+20	l(2)01289	skeletal muscle of head
+21	Fer1	gabaergic neurons
+24	CG34398	cone cell
+25	CG14340	T neuron T4/T5
+26	caup	OPN neurons
+27	ey	kenyon cell
+28	retn	outer photoreceptor cell
+29	ss	olfactory receptor neuron
+32	ey	gamma kenyon cell
+34	VGlut	distal medullary amacrine neuron Dm3
+35	trh	serotonergic neurons
+36	Grd	lamina monopolar neuron L1 + L2
+37	Rh50	adult reticular neuropil associated glial cell 
+38	CG10936	epithelial cell
+39	axo	adult optic chiasma glial cell 
+41	eg	epithelial cell
+42	DIP-theta	tm5ab
+44	sosie	T neuron T3
+47	RhoGEF64C	pigment cell 
+48	Dfd	epithelial cell
+49	lncRNA:CR45223	lobular columnar neuron LC12
+50	Ets65A	centrifugal neuron C2
+51	Poxn	Poxn neurons
+52	kn	transmedullary Y neuron TmY5a
+53	bsh	lamina monopolar neuron L4
+54	Pex7	photoreceptor-like
+55	opa	lamina wide-field 2 neuron
+56	hbn	columnar neuron T1
+57	CG42235	adult brain cell body glial cell
+58	DAT	dopaminergic neurons
+59	NetA	lamina monopolar neuron L3
+60	CG17193	transmedullary neuron Tm1
+61	Tk	medullary intrinsic neuron Mi1
+62	pb	medullary intrinsic neuron Mi4
+63	Wnt10	transmedullary neuron Tm9
+64	CG10479	adult brain perineurial glial cell 
+65	bt	skeletal muscle of head
+66	Cyp4g15	adult lamina epithelial/marginal glial cell
+67	DIP-zeta	transmedullary neuron Tm20
+68	Ppn	hemocytes
+69	CG14331	adult optic chiasma glial cell 
+71	Fs	transmedullary neuron Tm2
+72	bsh	lamina monopolar neuron L5
+73	hbn	glutamatergic neurons
+74	Cyp4aa1	epithelial cell
+75	tey	cholinergic neurons
+76	Nos	centrifugal neuron C3
+78	SIFaR	distal medullary amacrine neuron Dm9
+79	lncRNA:CR45223	distal medullary amacrine neuron Dm8
+80	DAT	medullary intrinsic neuron Mi15
+81	RunxB	proximal medullary amacrine neuron Pm4
+82	CG14495	optic lobe associated cortex glial cell 
+84	otp	OPN neurons
+89	FBti0020074	transmedullary Y neuron TmY14

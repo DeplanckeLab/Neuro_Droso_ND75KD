@@ -1,0 +1,241 @@
+---
+title: "Emma Pan Neuro (Control + ND75KD) - Oxphos genes scoring"
+author: "Vincent Gardeux"
+date: "02/26/2024"
+output:
+  html_document:
+    df_print: paged
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "~/SVRAW1/gardeux/2023-04-19_Emma_snRNAseq/analysis/")
+```
+
+## Libraries & functions
+
+First, I'm loading the required libraries & functions
+
+```{r}
+suppressPackageStartupMessages(library(Seurat)) # For single-cell pipeline
+suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
+suppressPackageStartupMessages(library(loomR)) # For building a file for ASAP
+suppressPackageStartupMessages(library(Matrix)) # For building a file for ASAP
+suppressPackageStartupMessages(library(ggplot2)) # For dataset integration
+suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
+
+cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
+cat(bold("loomR"), "version", as.character(packageVersion("loomR")), "\n")
+cat(bold("Matrix"), "version", as.character(packageVersion("Matrix")), "\n")
+cat(bold("ggplot2"), "version", as.character(packageVersion("ggplot2")), "\n")
+
+# Parameters
+seurat_integrated <- "Pan_neuro_both_reannotated_GFP_curated_reintegrated.rds"
+AUC_values_path <- "Pan_neuro_both_reannotated_GFP_curated_reintegrated_117Oxphos_AUCell_auc.tsv"
+seurat_output <- "Pan_neuro_both_reannotated_GFP_curated_reintegrated_OXPHOS.rds"
+
+# Random seed
+set.seed(42)
+```
+
+## I Reading Seurat object
+
+First step is to read the Seurat objects, previously created
+
+```{r}
+message("Loading Seurat object...")
+data.seurat <- readRDS(seurat_integrated)
+message(ncol(data.seurat), " cells were loaded")
+message(nrow(data.seurat), " genes were loaded")
+```
+
+## II.1 Reading AUC values from AUCell (using the 117 OXPHOS genes from Flybase GO-BP GO:0006119 : oxidative phosphorylation)
+
+```{r}
+data.auc <- fread(AUC_values_path, data.table = F)
+rownames(data.auc) <- data.auc$Cell
+data.auc
+```
+## II.2 Adding to Seurat object:
+
+```{r}
+data.seurat$AUC_OXPHOS_117_Flybase <- data.auc[colnames(data.seurat), "AUC"]
+hist(data.seurat$AUC_OXPHOS_117_Flybase)
+```
+
+```{r}
+# Adding cluster number to unannotated emma's annotations
+data.seurat$annotation_emma_merged <- data.seurat$annotation_emma
+data.seurat$annotation_emma_merged[data.seurat$annotation_emma_merged == "unannotated"] <- as.character(data.seurat$seurat_clusters)[data.seurat$annotation_emma_merged == "unannotated"]
+```
+
+## II.3 Plot
+
+```{r}
+FeaturePlot(data.seurat, reduction = "umap_harmony", features = "AUC_OXPHOS_117_Flybase")
+```
+
+```{r}
+FeaturePlot(data.seurat, reduction = "tsne_harmony", features = "AUC_OXPHOS_117_Flybase")
+```
+
+```{r}
+VlnPlot(data.seurat, features = "AUC_OXPHOS_117_Flybase", group.by = "orig.ident", sort = "decreasing") + theme(legend.position = 'none') 
+```
+
+Statistical significance? (t-test)
+
+```{r}
+t.test(data.seurat$AUC_OXPHOS_117_Flybase[data.seurat$orig.ident == "Pan_neuro_control"], data.seurat$AUC_OXPHOS_117_Flybase[data.seurat$orig.ident == "Pan_neuro_ND75KD"]) 
+```
+
+This is significant but the difference of means is very very low. Mean of ND75-KD is slightly lower than mean of Control
+What about significance in each cluster / cell-type?
+
+```{r}
+data.sig <- data.frame(annotation_emma_merged = unique(data.seurat$annotation_emma_merged), p.value = 1, log.fold.change = 0)
+rownames(data.sig) = as.character(data.sig$annotation_emma_merged)
+for(clust in rownames(data.sig)){
+  ctrl <- data.seurat$AUC_OXPHOS_117_Flybase[data.seurat$orig.ident == "Pan_neuro_control" & data.seurat$annotation_emma_merged == clust]
+  nd75kd <- data.seurat$AUC_OXPHOS_117_Flybase[data.seurat$orig.ident == "Pan_neuro_ND75KD" & data.seurat$annotation_emma_merged == clust]
+  if(length(ctrl) < 3 | length(nd75kd) < 3){
+    data.sig[clust, "p.value"] <- NA
+    data.sig[clust, "log.fold.change"] <- NA
+  } else {
+    data.sig[clust, "p.value"] <- t.test(ctrl, nd75kd)$p.value
+    data.sig[clust, "log.fold.change"] <-  log2(mean(nd75kd)) - log2(mean(ctrl))
+  }
+}
+data.sig <- data.sig[with(data.sig, order(p.value)),]
+data.sig
+```
+
+**Of note:** Our cluster 2 & 23 of interest are not there because there are not enough cells in CTRL to compute p-value
+- Cluster 23: 1 ctrl cells vs 330 ND-75KD cells
+- Cluster 2: 2 ctrl cells vs 795 ND-75KD cells
+
+```{r}
+ggplotly(ggplot(data.sig, aes(x = log.fold.change, y = -log10(p.value), text = annotation_emma_merged)) + geom_point() + ggtitle("Volcano plot - Ctrl vs ND-75KD - 117 OXPHOS genes"))
+```
+
+```{r, fig.width = 12}
+data.sig$annotation_emma_merged <- factor(data.sig$annotation_emma_merged, levels = data.sig$annotation_emma_merged)
+ggplot(data.sig, aes(y = -log10(p.value), x = annotation_emma_merged)) + geom_bar(stat="identity") + ggtitle("t-test p-values - Ctrl vs ND-75KD - 117 OXPHOS genes") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+```{r, fig.width=12}
+# Extracting the relevant metadata
+metadata <- as.data.frame(data.seurat@meta.data)
+
+# Calculating median values of "AUC_OXPHOS_117_Flybase" for each group
+median_values <- tapply(metadata$AUC_OXPHOS_117_Flybase, metadata$seurat_clusters, median)
+
+# Sorting the metadata based on median values
+metadata$seurat_clusters <- factor(metadata$seurat_clusters, levels = names(sort(median_values, decreasing = F)))
+
+# Plotting a violin plot using ggplot2
+ggplot(metadata, aes(x = seurat_clusters, y = AUC_OXPHOS_117_Flybase)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(x = "Seurat Clusters", y = "AUC_OXPHOS_117_Flybase")
+```
+
+```{r, fig.width=12}
+# Extracting the relevant metadata
+metadata <- as.data.frame(data.seurat@meta.data)
+
+# Calculating median values of "AUC_OXPHOS_117_Flybase" for each group
+median_values <- tapply(metadata$AUC_OXPHOS_117_Flybase, metadata$annotation_emma, median)
+
+# Sorting the metadata based on median values
+metadata$annotation_emma <- factor(metadata$annotation_emma, levels = names(sort(median_values, decreasing = F)))
+
+# Plotting a violin plot using ggplot2
+ggplot(metadata, aes(x = annotation_emma, y = AUC_OXPHOS_117_Flybase)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(x = "Seurat Clusters", y = "AUC_OXPHOS_117_Flybase")
+```
+
+```{r, fig.width=12}
+# Extracting the relevant metadata
+metadata <- as.data.frame(data.seurat@meta.data)
+
+# Calculating median values of "AUC_OXPHOS_117_Flybase" for each group
+median_values <- tapply(metadata$AUC_OXPHOS_117_Flybase, metadata$annotation_emma_merged, median)
+
+# Sorting the metadata based on median values
+metadata$annotation_emma_merged <- factor(metadata$annotation_emma_merged, levels = names(sort(median_values, decreasing = F)))
+
+# Plotting a violin plot using ggplot2
+ggplot(metadata, aes(x = annotation_emma_merged, y = AUC_OXPHOS_117_Flybase)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(x = "Seurat Clusters / Emma's Annotation", y = "AUC_OXPHOS_117_Flybase")
+```
+
+Separate by condition (but keep global order)
+
+```{r, fig.width=12}
+# Extracting the relevant metadata
+metadata <- as.data.frame(data.seurat@meta.data)
+
+# Calculating median values of "AUC_OXPHOS_117_Flybase" for each group
+median_values <- tapply(metadata$AUC_OXPHOS_117_Flybase, metadata$annotation_emma_merged, median)
+
+# Sorting the metadata based on median values
+metadata$annotation_emma_merged <- factor(metadata$annotation_emma_merged, levels = names(sort(median_values, decreasing = F)))
+
+# Plotting a violin plot using ggplot2
+ggplot(metadata, aes(x = annotation_emma_merged, y = AUC_OXPHOS_117_Flybase)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(x = "Seurat Clusters / Emma's Annotation", y = "AUC_OXPHOS_117_Flybase") + facet_grid(orig.ident ~ .)
+```
+
+Separate by condition (and reorder)
+
+```{r, fig.width=12, fig.height=10}
+p <- list()
+for(exp in c("Pan_neuro_control", "Pan_neuro_ND75KD")){
+  # Extracting the relevant metadata
+  metadata <- as.data.frame(data.seurat@meta.data[data.seurat$orig.ident == exp,])
+  
+  # Calculating median values of "AUC_OXPHOS_117_Flybase" for each group
+  median_values <- tapply(metadata$AUC_OXPHOS_117_Flybase, metadata$annotation_emma_merged, median)
+  
+  # Sorting the metadata based on median values
+  metadata$annotation_emma_merged <- factor(metadata$annotation_emma_merged, levels = names(sort(median_values, decreasing = F)))
+  
+  # Plotting a violin plot using ggplot2
+  p[[exp]] <- ggplot(metadata, aes(x = annotation_emma_merged, y = AUC_OXPHOS_117_Flybase)) +
+    geom_boxplot() +
+    theme_minimal() +
+    theme(legend.position = "none", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    labs(x = "Seurat Clusters / Emma's Annotation", y = "AUC_OXPHOS_117_Flybase") + ggtitle(exp)
+}
+ggarrange(plotlist = p, nrow = 2, ncol = 1)
+```
+
+```{r}
+DimPlot(data.seurat, reduction = "tsne_harmony", label = TRUE, pt.size = 0.5) + NoLegend()
+```
+
+```{r, fig.height=15, fig.width=15}
+DimPlot(data.seurat, reduction = "tsne_harmony", label = TRUE, pt.size = 0.5, group.by = "annotation_emma") + NoLegend()
+```
+
+```{r, fig.height=15, fig.width=15}
+DimPlot(data.seurat, reduction = "tsne_harmony", label = TRUE, pt.size = 0.5, group.by = "annotation_emma_merged") + NoLegend()
+```
+
+## III Save Seurat object
+
+```{r}
+saveRDS(data.seurat, file = seurat_output)
+```
