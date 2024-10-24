@@ -32,8 +32,8 @@ Rscript -e "rmarkdown::render('./preprocessing/S1_Pan_neuro_integrated.Rmd', out
 
 ### 1.2. Adding metadata to the Seurat object
 Now that we generated the integrated Seurat object, we will add the following metadata:
-a) An Oxphos score generated using AUCell from the pySCENIC pipeline
-b) A manual annotation of the clusters
+- a) An Oxphos score generated using AUCell from the pySCENIC pipeline
+- b) A manual annotation of the clusters
 
 #### 1.2.a Oxphos score using AUCell
 TODO
@@ -43,6 +43,7 @@ TODO
 
 ### 1.3. Running pySCENIC and adding regulon data to the Seurat object
 Now, we will run the pySCENIC pipeline in Python, using the aertslab/pyscenic:0.12.1 Docker image available on the DockerHub.
+
 **Of note:** We simply had to add the `ipykernel` package in the Docker image to create a Jupyter Notebook kernel (created in /usr/local/share/jupyter/kernels/pySCENIC/[kernel.json](./data/kernel.json)) that we can now load in Jupyter Notebook.
 
 ## 2. Manuscript Figures
