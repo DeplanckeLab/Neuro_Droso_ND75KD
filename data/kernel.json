@@ -1,0 +1,22 @@
+{
+ "argv": [
+  "docker",
+  "run",
+  "--rm",
+  "--network=host",
+  "-v",
+  "{connection_file}:/connection-spec",
+  "-v",
+  "/home:/home",
+  "-v",
+  "/data:/data",
+  "localhost/pyscenic-0.12.1",
+  "python",
+  "-m",
+  "ipykernel_launcher",
+  "-f",
+  "/connection-spec"
+ ],
+ "display_name": "pySCENIC (Python v3.10)",
+ "language": "python"
+}
