@@ -1,4 +1,4 @@
-cluster	marker_gene	emma_annotation
+cluster	marker_gene	annotation
 3	VGlut	glutamatergic neurons
 6	CG8312	epithelial cell
 7	Vsx1	transmedullary Y neuron TmY8
