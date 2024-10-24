@@ -2,7 +2,7 @@
 title: "Neuro_Droso_ND75KD - Generating integrated dataset including both Pan_neuro_control and Pan_neuro_ND75KD Seurat objects"
 author: "Vincent Gardeux"
 date_created: "2023-05-12"
-date_modified: "2024-10-21"
+date_modified: "2024-10-23"
 output:
   html_document:
     df_print: paged
@@ -22,10 +22,16 @@ In this script, I will analyze the Pan Neuro ND75-KD single-cell RNA-seq dataset
 ```{r}
 suppressPackageStartupMessages(library(Seurat, lib.loc = "/home/gardeux/.R/lib/")) # Seurat v4.4.0, library for single-cell analysis
 suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/home/gardeux/.R/lib/")) # For compatibility purpose
+suppressPackageStartupMessages(library(harmony)) # For integration
+suppressPackageStartupMessages(library(ggplot2)) # For Plotting
+suppressPackageStartupMessages(library(data.table)) # For reading/writing text files
 suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
 
 cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
 cat(bold("SeuratObject"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("harmony"), "version", as.character(packageVersion("harmony")), "\n")
+cat(bold("ggplot2"), "version", as.character(packageVersion("ggplot2")), "\n")
+cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
 ```
 
 ## Parameters
@@ -51,10 +57,9 @@ for(path in input_seurat_path){
   message(ncol(data.seurat.tmp), " cells were loaded")
   message(nrow(data.seurat.tmp), " genes were loaded")
   
-  data.seurat.tmp <- RenameCells(data.seurat.tmp, new.names = paste0(colnames(data.seurat.tmp), "_", strsplit(filename, split = "_")[[1]][3]))
+  #data.seurat.tmp <- RenameCells(data.seurat.tmp, new.names = paste0(colnames(data.seurat.tmp), "_", strsplit(filename, split = "_")[[1]][3]))
+  # I ended up adding manually _ctrl or _ndkd
   seurat_objects[[filename]] <- data.seurat.tmp
-  rm(data.seurat.tmp)
-  rm(filename)
 }
 ```
 
@@ -66,36 +71,178 @@ First step is to create a single Seurat object from the two files
 
 ```{r}
 # Merge the seurat objects
-data.seurat <- merge(x = seurat_objects[[1]], y = seurat_objects[[2]], project = project_name)
+data.seurat <- merge(x = seurat_objects[[1]], y = seurat_objects[[2]], project = output_project_name)
 
 # Filling metadatas
-data.seurat@meta.data$percent.mt <- NULL # No information for FCA data
-data.seurat@meta.data$RNA_snn_res.8 <- NULL # Makes no sense now
+data.seurat@meta.data$RNA_snn_res.4 <- NULL # Makes no sense now
 data.seurat@meta.data$seurat_clusters <- NULL # Makes no sense now
-data.seurat@meta.data$nCount_RNA_Log <- NULL # No information for FCA data
-data.seurat@meta.data$nFeature_RNA_Log <- NULL # No information for FCA data
-data.seurat@meta.data$batch_id <- NULL # From FCA but not useful
-data.seurat@meta.data$batch[is.na(data.seurat@meta.data$batch)] <- 13 # It's a new batch (there was 13 batches 0:12 in FCA dataset)
-data.seurat@meta.data$genetics[is.na(data.seurat@meta.data$genetics)] <- data.seurat@meta.data$fly_genetics[is.na(data.seurat@meta.data$genetics)] # change name to 'genetics' to match our data
-data.seurat@meta.data$fly_genetics <- NULL
 
 # Size of the new Seurat object
 message(ncol(data.seurat), " cells in integrated Seurat object")
 message(nrow(data.seurat), " genes in integrated Seurat object")
 
 # Saving RAM
-rm(data.seurat.1)
-rm(data.seurat.2)
+rm(seurat_objects)
 ```
 
-## II. GFP filtering
-
-We saw on ASAP that a GFP>1 was a good filtering threshold
+# Normalization
 
 ```{r}
-message("Filtering GFP signal...")
-data.seurat <- data.seurat[,data.seurat$GFP > 1]
-data.seurat <- data.seurat[rowSums(data.seurat) > 0,]
-message(ncol(data.seurat), " cells remaining")
-message(nrow(data.seurat), " genes remaining")
+# Default params
+data.seurat <- NormalizeData(data.seurat, normalization.method = "LogNormalize", scale.factor = 10000) 
 ```
+
+# Highly variable genes
+
+```{r}
+data.seurat <- FindVariableFeatures(data.seurat, selection.method = "vst", nfeatures = 2000)
+VariableFeaturePlot(data.seurat)
+```
+
+# Scaling
+
+```{r}
+data.seurat <- ScaleData(data.seurat, features = rownames(data.seurat))
+```
+
+# PCA
+
+```{r}
+data.seurat <- RunPCA(data.seurat, features = VariableFeatures(data.seurat), verbose = F, npcs = 100)
+DimPlot(object = data.seurat, reduction = "pca", pt.size = 1, group.by = "orig.ident", order = "Pan_neuro_ND75KD")
+DimPlot(object = data.seurat, reduction = "pca", pt.size = 1, group.by = "orig.ident", order = "Pan_neuro_control")
+```
+
+# Visualizing the differences in each batch
+
+```{r}
+VlnPlot(object = data.seurat, features = "PC_1", group.by = "orig.ident", pt.size = 1)
+```
+
+It actually looks pretty similar. We don't see much batch-effect.
+
+# JackStraw
+```{r}
+data.seurat <- JackStraw(data.seurat, num.replicate = 100, dims = 100)
+data.seurat <- ScoreJackStraw(data.seurat, dims = 1:100)
+data.seurat@reductions$pca@jackstraw$overall.p.values
+```
+
+The p-value distribution show that ~100 PCs are good (similar to the individual files), so I keep 100 PCs for the rest of the pipeline.
+I've plotted the tail of the JackStraw plot (80 to 100 PCs) to see that indeed the sweet spot is around there.
+
+```{r}
+JackStrawPlot(data.seurat, dims = 80:100)
+npcs <- 100
+```
+
+# What about UMAP (visualization)?
+
+```{r}
+data.seurat <- RunUMAP(data.seurat, dims = 1:npcs, reduction = "pca", reduction.name = "umap_uncorrected")
+DimPlot(object = data.seurat, reduction = "umap_uncorrected", pt.size = 1, group.by = "orig.ident", order = "Pan_neuro_ND75KD")
+DimPlot(object = data.seurat, reduction = "umap_uncorrected", pt.size = 1, group.by = "orig.ident", order = "Pan_neuro_control")
+```
+
+Both datasets already merge very well. We don't want to over-correct and loose the unique ND75KD cluster.
+
+# And t-SNE (visualization)?
+
+```{r}
+data.seurat <- RunTSNE(data.seurat, dims = 1:npcs, reduction = "pca", reduction.name = "tsne_uncorrected")
+DimPlot(object = data.seurat, reduction = "tsne_uncorrected", pt.size = 1, group.by = "orig.ident", order = "Pan_neuro_ND75KD")
+DimPlot(object = data.seurat, reduction = "tsne_uncorrected", pt.size = 1, group.by = "orig.ident", order = "Pan_neuro_control")
+```
+
+# Run Harmony
+
+```{r}
+# Lenient correction (what is needed here)
+data.seurat <- RunHarmony(object = data.seurat, reduction.use = "pca", dims.use = 1:npcs, group.by.vars = "orig.ident", plot_convergence = TRUE, early_stop = T, reduction.save = "harmony")
+# Over-correction (see what will happen)
+data.seurat <- RunHarmony(object = data.seurat, reduction.use = "pca", dims.use = 1:npcs, group.by.vars = "orig.ident", plot_convergence = TRUE, early_stop = F, max_iter = 100, reduction.save = "harmony_overcorrected")
+```
+
+Now plot the Harmony embeddings
+
+```{r}
+DimPlot(object = data.seurat, reduction = "harmony", pt.size = 1, group.by = "orig.ident", order = "Pan_neuro_ND75KD")
+DimPlot(object = data.seurat, reduction = "harmony", pt.size = 1, group.by = "orig.ident", order = "Pan_neuro_control")
+```
+
+Still looks good. What about the first component of the Harmony embedding?
+
+```{r}
+VlnPlot(object = data.seurat, features = "harmony_1", group.by = "orig.ident", pt.size = .1)
+```
+
+Looks ok
+
+## III Downstream analysis
+
+Now that all data are integrated into Harmony embeddings, I will perform the standard pipeline, but using Harmony embeddings, instead of PCA
+
+# Clustering
+
+```{r}
+data.seurat <- FindNeighbors(data.seurat, dims = 1:npcs, reduction = "harmony", graph.name = c("RNA_nn_harmony", "RNA_snn_harmony"))
+# I use a resolution of 4, which is completely arbitrary, we may tune it to have more/less clusters
+data.seurat <- FindClusters(data.seurat, resolution = 4, graph.name = "RNA_snn_harmony")
+data.seurat$seurat_clusters_harmony_res.4 <- data.seurat@meta.data$RNA_snn_harmony_res.4
+data.seurat@meta.data$RNA_snn_harmony_res.4 <- NULL
+```
+
+# UMAP (visualization)
+
+```{r}
+data.seurat <- RunUMAP(data.seurat, dims = 1:npcs, reduction = "harmony", reduction.name = "umap_harmony")
+DimPlot(data.seurat, reduction = "umap_harmony", pt.size = 1, group.by = "orig.ident", order = "Pan_neuro_control")
+DimPlot(data.seurat, reduction = "umap_harmony", pt.size = 1, group.by = "orig.ident", order = "Pan_neuro_ND75KD")
+```
+
+Not too bad
+
+```{r}
+DimPlot(data.seurat, reduction = "umap_harmony", pt.size = 1, group.by = "seurat_clusters")
+```
+
+What about over-corrected Harmony embeddings
+
+```{r}
+data.seurat <- RunUMAP(data.seurat, dims = 1:npcs, reduction = "harmony_overcorrected", reduction.name = "umap_harmony_overcorrected")
+DimPlot(data.seurat, reduction = "umap_harmony_overcorrected", pt.size = 1, group.by = "orig.ident", order = "Pan_neuro_control")
+DimPlot(data.seurat, reduction = "umap_harmony_overcorrected", pt.size = 1, group.by = "orig.ident", order = "Pan_neuro_ND75KD")
+```
+
+Indeed the ND75KD-specific cluster was merged
+
+# t-SNE (visualization)
+
+```{r}
+data.seurat <- RunTSNE(data.seurat, dims = 1:npcs, reduction = "harmony", reduction.name = "tsne_harmony")
+DimPlot(data.seurat, reduction = "tsne_harmony", pt.size = 1, group.by = "orig.ident", order = "Pan_neuro_control")
+DimPlot(data.seurat, reduction = "tsne_harmony", pt.size = 1, group.by = "orig.ident", order = "Pan_neuro_ND75KD")
+```
+
+Same here
+
+```{r}
+DimPlot(data.seurat, reduction = "tsne_harmony", pt.size = 1, group.by = "seurat_clusters")
+```
+
+What about over-corrected Harmony embeddings
+
+```{r}
+data.seurat <- RunTSNE(data.seurat, dims = 1:npcs, reduction = "harmony_overcorrected", reduction.name = "tsne_harmony_overcorrected")
+DimPlot(data.seurat, reduction = "tsne_harmony_overcorrected", pt.size = 1, group.by = "orig.ident", order = "Pan_neuro_control")
+DimPlot(data.seurat, reduction = "tsne_harmony_overcorrected", pt.size = 1, group.by = "orig.ident", order = "Pan_neuro_ND75KD")
+```
+
+Indeed the ND75KD-specific cluster was a bit more merged
+
+## IV. Saving the Seurat object
+
+```{r}
+saveRDS(data.seurat, file = output_seurat_path)
+```
+
