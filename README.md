@@ -32,19 +32,28 @@ Rscript -e "rmarkdown::render('./preprocessing/S1_Pan_neuro_integrated.Rmd', out
 
 ### 1.2. Adding metadata to the Seurat object
 Now that we generated the integrated Seurat object, we will add the following metadata:
-- a) An Oxphos score generated using AUCell from the pySCENIC pipeline
+- a) An Oxphos score generated using AUCell from the pySCENIC pipeline (see in 1.3 how we installed/used pySCENIC)
 - b) A manual annotation of the clusters
 
 #### 1.2.a Oxphos score using AUCell
-TODO
+The goal of this step is to create of score of enrichment of OXPHOS genes in each cell to see which cells are enriched for OXPHOS genes. In this section, we will do this by using the AUCell tool in the pySCENIC pipeline.
+The first step is to generate a .loom file that will be read by the pySCENIC pipeline. So we use this [SX1_Create_Loom_From_Seurat_Object.Rmd](preprocessing/SX1_Create_Loom_From_Seurat_Object.Rmd)] R script which transform our previous Seurat object (Pan_neuro_integrated.rds) into a LOOM file (Pan_neuro_integrated.loom).
+
+Then we can run the [S2a_Pan_neuro_integrated_Oxphos_scoring_AUCell.ipynb](preprocessing/S2a_Pan_neuro_integrated_Oxphos_scoring_AUCell.ipynb)] Jupyter Notebook script which reads both the `Pan_neuro_integrated.loom` LOOM file and the OXPHOS gene list (using the 117 OXPHOS genes from Flybase GO-BP GO:0006119 : oxidative phosphorylation stored in the [Oxphos_genes.xlsx](./data/Oxphos_genes.xlsx) Excel file). This generates a [Pan_neuro_integrated_117_Oxphos_AUCell_auc.tsv](./data/Pan_neuro_integrated_117_Oxphos_AUCell_auc.tsv) cell/score mapping tsv file, which we will use later to incorporate the metadata in our Seurat object.
 
 #### 1.2.b Manual annotation of the clusters
-TODO
+We generated a marker gene table for each of the generated clusters that we handed to our expert for manual annotation of the clusters. We also leverage an integration with the Fly Cell Atlas Head dataset to transfer annotation and help with the curation of all clusters (data not shown).
+This tedious task generated the [Pan_neuro_integrated_markers_annotation.txt](./data/Pan_neuro_integrated_markers_annotation.txt) file, containing an annotation for each cluster. We propagated this annotation to each cell in the next step.
+
+#### 1.2.c Adding these metadata to the Seurat object
 
 ### 1.3. Running pySCENIC and adding regulon data to the Seurat object
 Now, we will run the pySCENIC pipeline in Python, using the aertslab/pyscenic:0.12.1 Docker image available on the DockerHub.
 
 **Of note:** We simply had to add the `ipykernel` package in the Docker image to create a Jupyter Notebook kernel (created in /usr/local/share/jupyter/kernels/pySCENIC/[kernel.json](./data/kernel.json)) that we can now load in Jupyter Notebook.
+
+### 1.4 Adding all metadata to the final Seurat object
+In this step we added the metadata generated in steps 1.2.a, 1.2.b, and 1.3 to the final Seurat object.
 
 ## 2. Manuscript Figures
 
