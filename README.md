@@ -48,7 +48,7 @@ This tedious task generated the [Pan_neuro_integrated_markers_annotation.txt](./
 #### 1.2.c Adding these metadata to the Seurat object
 
 ### 1.3. Running pySCENIC and adding regulon data to the Seurat object
-Now, we will run the pySCENIC pipeline in Python, using the aertslab/pyscenic:0.12.1 Docker image available on the DockerHub.
+Now, we will run the pySCENIC pipeline in Python, using the [aertslab/pyscenic:0.12.1](https://hub.docker.com/r/aertslab/pyscenic/tags) Docker image available on the DockerHub.
 
 **Of note:** We simply had to add the `ipykernel` package in the Docker image to create a Jupyter Notebook kernel (created in /usr/local/share/jupyter/kernels/pySCENIC/[kernel.json](./data/kernel.json)) that we could then load in Jupyter Notebook.
 
