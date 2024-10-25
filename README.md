@@ -46,6 +46,7 @@ We generated a marker gene table for each of the generated clusters that we hand
 This tedious task generated the [Pan_neuro_integrated_markers_annotation.txt](./data/Pan_neuro_integrated_markers_annotation.txt) file, containing an annotation for each cluster. We propagated this annotation to each cell in the next step.
 
 #### 1.2.c Adding these metadata to the Seurat object
+We do this after all metadata were generated, in step 1.4.
 
 ### 1.3. Running pySCENIC and adding regulon data to the Seurat object
 Now, we will run the pySCENIC pipeline in Python, using the [aertslab/pyscenic:0.12.1](https://hub.docker.com/r/aertslab/pyscenic/tags) Docker image available on the DockerHub.
@@ -53,12 +54,19 @@ Now, we will run the pySCENIC pipeline in Python, using the [aertslab/pyscenic:0
 **Of note:** We simply had to add the `ipykernel` package in the Docker image to create a Jupyter Notebook kernel (created in /usr/local/share/jupyter/kernels/pySCENIC/[kernel.json](./data/kernel.json)) that we could then load in Jupyter Notebook.
 
 #### 1.3.a Running pySCENIC in Python <sub>(see full code here: [[ipynb](preprocessing/S3a_Pan_neuro_integrated_pySCENIC_pipeline.ipynb)])</sub>
-Running pySCENIC without any error was far from being an easy journey. I'd like to point an eventual reader to this GitHub issue that I've created for this purpose: [aertslab/pySCENIC/issues/534](https://github.com/aertslab/pySCENIC/issues/534). It explains the issues I faced and how I resolved them. This may help to understand some filtering/mapping that I do in the ipynb file, which are not from the default pySCENIC tutorial.
+Running pySCENIC without any error was far from being an easy journey. We'd like to point an eventual reader to this GitHub issue that we've created for this purpose: [aertslab/pySCENIC/issues/534](https://github.com/aertslab/pySCENIC/issues/534). It explains the issues we faced and how we resolved them. This may help to understand some filtering/mapping that we do in the ipynb file, which are not from the default pySCENIC tutorial.
 
-#### 1.3.b Importing pySCENIC regulons to the Seurat object <sub>(see full code here: [[Rmd](preprocessing/S3b_TODO.Rmd)])</sub>
+It is worth noting that we saved all intermediary files in .tsv files (available in [./data](./data)). We also applied the binarization method for each regulon, to get a binary output (instead of a continuous regulon score) of activated vs. non-activated regulon. Both regulon outputs are then stored in [Pan_neuro_integrated_regulons_aucell.tsv](./data/Pan_neuro_integrated_regulons_aucell.tsv) and [Pan_neuro_integrated_regulons_aucell_binarized.tsv](./data/Pan_neuro_integrated_regulons_aucell_binarized.tsv) to be further imported into the Seurat object.
+
+#### 1.3.b Importing pySCENIC regulons to the Seurat object
+We do this after all metadata were generated, in step 1.4.
 
 ### 1.4 Adding all metadata to the final Seurat object
-In this step we added the metadata generated in steps 1.2.a, 1.2.b, and 1.3 to the final Seurat object.
+In this step we add the metadata generated in steps 1.2.a, 1.2.b, and 1.3 to the final Seurat object.
+
+This finishes the preprocessing of the Seurat object, and generated a .rds file (also available to download on ArrayExpress). Next, we use this [SX1_Create_Loom_From_Seurat_Object.Rmd](preprocessing/SX1_Create_Loom_From_Seurat_Object.Rmd)] R script to transform the Seurat object into a Loom file, and upload it to our ASAP interactive portal [asap.epfl.ch](https://asap.epfl.ch). From this portal, you can visualize the datasets and download it as h5ad or LOOM file.
+
+[ASAP final link to be provided once published]
 
 ## 2. Manuscript Figures
 
