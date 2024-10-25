@@ -61,7 +61,7 @@ It is worth noting that we saved all intermediary files in .tsv files (available
 #### 1.3.b Importing pySCENIC regulons to the Seurat object
 We do this after all metadata were generated, in step 1.4.
 
-### 1.4 Adding all metadata to the final Seurat object
+### 1.4 Adding all metadata to the final Seurat object <sub>(see full code here: [[Rmd](preprocessing/S4_Pan_neuro_integrated_add_metadata.Rmd)])</sub>
 In this step we add the metadata generated in steps 1.2.a, 1.2.b, and 1.3 to the final Seurat object.
 
 This step finishes the preprocessing of the Seurat object, and generates a .rds file (also available to download on ArrayExpress). Next, we use this [SX1_Create_Loom_From_Seurat_Object.Rmd](preprocessing/SX1_Create_Loom_From_Seurat_Object.Rmd) R script to transform the Seurat object into a Loom file, and upload it to our ASAP interactive portal [asap.epfl.ch](https://asap.epfl.ch). From this portal, you can visualize the datasets and download it as h5ad or LOOM file.
