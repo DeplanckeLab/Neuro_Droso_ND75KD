@@ -52,7 +52,7 @@ Now, we will run the pySCENIC pipeline in Python, using the [aertslab/pyscenic:0
 
 **Of note:** We simply had to add the `ipykernel` package in the Docker image to create a Jupyter Notebook kernel (created in /usr/local/share/jupyter/kernels/pySCENIC/[kernel.json](./data/kernel.json)) that we could then load in Jupyter Notebook.
 
-#### 1.3.a Running pySCENIC in Python <sub>(see full code here: [[Rmd](preprocessing/S3a_Pan_neuro_integrated_pySCENIC_pipeline.ipynb)])</sub>
+#### 1.3.a Running pySCENIC in Python <sub>(see full code here: [[ipynb](preprocessing/S3a_Pan_neuro_integrated_pySCENIC_pipeline.ipynb)])</sub>
 Running pySCENIC without any error was far from being an easy journey. I'd like to point an eventual reader to this GitHub issue, which explains the issues I faced and how I resolved them: [aertslab/pySCENIC/issues/534](https://github.com/aertslab/pySCENIC/issues/534).
 
 #### 1.3.b Importing pySCENIC regulons to the Seurat object <sub>(see full code here: [[Rmd](preprocessing/S3b_TODO.Rmd)])</sub>
