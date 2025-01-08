@@ -1171,3 +1171,509 @@ FeaturePlot(data.seurat.ND75KD, reduction = "SCENICbinarizedumap", features = c(
 ```{r, fig.height = 5, fig.width = 15}
 FeaturePlot(data.seurat.ND75KD, reduction = "SCENICbinarizedumap", features = c("srl", "SCENIC_srl_activating_regulon", "SCENIC_srl_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
 ```
+
+## V. Displaying regulons / gene expressions
+
+## V.1 Crc (Atf4)
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("crc", "SCENIC_crc_activating_regulon", "SCENIC_crc_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedtsne", features = c("crc", "SCENIC_crc_activating_regulon", "SCENIC_crc_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "tsne_harmony", features = c("crc", "SCENIC_crc_activating_regulon", "SCENIC_crc_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 12}
+display.boxplot.gene(data.seurat, "crc")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.gene.per.lib(data.seurat, "crc")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata(data.seurat, "SCENIC_crc_activating_regulon")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.per.lib(data.seurat, "SCENIC_crc_activating_regulon")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata.binarized(data.seurat, "SCENIC_crc_activating_regulon_binarized")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.binarized.per.lib(data.seurat, "SCENIC_crc_activating_regulon_binarized")
+```
+
+## V.2 Sima (HIF1alpha)
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("sima", "SCENIC_sima_activating_regulon", "SCENIC_sima_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedtsne", features = c("sima", "SCENIC_sima_activating_regulon", "SCENIC_sima_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "tsne_harmony", features = c("sima", "SCENIC_sima_activating_regulon", "SCENIC_sima_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 12}
+display.boxplot.gene(data.seurat, "sima")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.gene.per.lib(data.seurat, "sima")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata(data.seurat, "SCENIC_sima_activating_regulon")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.per.lib(data.seurat, "SCENIC_sima_activating_regulon")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata.binarized(data.seurat, "SCENIC_sima_activating_regulon_binarized")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.binarized.per.lib(data.seurat, "SCENIC_sima_activating_regulon_binarized")
+```
+
+
+## V.3 Repo
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("repo", "SCENIC_repo_activating_regulon", "SCENIC_repo_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedtsne", features = c("repo", "SCENIC_repo_activating_regulon", "SCENIC_repo_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "tsne_harmony", features = c("repo", "SCENIC_repo_activating_regulon", "SCENIC_repo_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 12}
+display.boxplot.gene(data.seurat, "repo")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.gene.per.lib(data.seurat, "repo")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata(data.seurat, "SCENIC_repo_activating_regulon")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.per.lib(data.seurat, "SCENIC_repo_activating_regulon")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata.binarized(data.seurat, "SCENIC_repo_activating_regulon_binarized")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.binarized.per.lib(data.seurat, "SCENIC_repo_activating_regulon_binarized")
+```
+
+## V.4 Dati
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("dati", "SCENIC_dati_activating_regulon", "SCENIC_dati_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedtsne", features = c("dati", "SCENIC_dati_activating_regulon", "SCENIC_dati_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "tsne_harmony", features = c("dati", "SCENIC_dati_activating_regulon", "SCENIC_dati_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 12}
+display.boxplot.gene(data.seurat, "dati")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.gene.per.lib(data.seurat, "dati")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata(data.seurat, "SCENIC_dati_activating_regulon")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.per.lib(data.seurat, "SCENIC_dati_activating_regulon")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata.binarized(data.seurat, "SCENIC_dati_activating_regulon_binarized")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.binarized.per.lib(data.seurat, "SCENIC_dati_activating_regulon_binarized")
+```
+
+## V.5 Pros
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("pros", "SCENIC_pros_activating_regulon", "SCENIC_pros_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedtsne", features = c("pros", "SCENIC_pros_activating_regulon", "SCENIC_pros_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "tsne_harmony", features = c("pros", "SCENIC_pros_activating_regulon", "SCENIC_pros_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 12}
+display.boxplot.gene(data.seurat, "pros")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.gene.per.lib(data.seurat, "pros")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata(data.seurat, "SCENIC_pros_activating_regulon")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.per.lib(data.seurat, "SCENIC_pros_activating_regulon")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata.binarized(data.seurat, "SCENIC_pros_activating_regulon_binarized")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.binarized.per.lib(data.seurat, "SCENIC_pros_activating_regulon_binarized")
+```
+
+## V.6 Scro
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("scro", "SCENIC_scro_activating_regulon", "SCENIC_scro_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedtsne", features = c("scro", "SCENIC_scro_activating_regulon", "SCENIC_scro_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "tsne_harmony", features = c("scro", "SCENIC_scro_activating_regulon", "SCENIC_scro_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 12}
+display.boxplot.gene(data.seurat, "scro")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.gene.per.lib(data.seurat, "scro")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata(data.seurat, "SCENIC_scro_activating_regulon")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.per.lib(data.seurat, "SCENIC_scro_activating_regulon")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata.binarized(data.seurat, "SCENIC_scro_activating_regulon_binarized")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.binarized.per.lib(data.seurat, "SCENIC_scro_activating_regulon_binarized")
+```
+
+## V.7 Imp & elav genes
+
+```{r, fig.height = 5, fig.width = 12}
+FeaturePlot(data.seurat, reduction = "SCENICtsne", features = c("Imp", "elav"), order = T, pt.size = 0.5)
+```
+
+```{r, fig.height = 5, fig.width = 12}
+FeaturePlot(data.seurat, reduction = "tsne_harmony", features = c("Imp", "elav"), order = T, pt.size = 0.5)
+```
+
+```{r, fig.height = 5, fig.width = 12}
+display.boxplot.gene(data.seurat, "Imp")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.gene.per.lib(data.seurat, "Imp")
+```
+
+```{r, fig.height = 5, fig.width = 12}
+display.boxplot.gene(data.seurat, "elav")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.gene.per.lib(data.seurat, "elav")
+```
+
+## VII.3 Plot
+
+```{r}
+FeaturePlot(data.seurat, reduction = "umap_harmony", features = "AUC_OXPHOS_117_Flybase")
+```
+
+```{r}
+FeaturePlot(data.seurat, reduction = "tsne_harmony", features = "AUC_OXPHOS_117_Flybase")
+```
+
+```{r}
+VlnPlot(data.seurat, features = "AUC_OXPHOS_117_Flybase", group.by = "orig.ident", sort = "decreasing") + theme(legend.position = 'none') 
+```
+
+## VII.4 Statistical significance? (t-test)
+
+```{r}
+t.test(data.seurat$AUC_OXPHOS_117_Flybase[data.seurat$orig.ident == "Pan_neuro_control"], data.seurat$AUC_OXPHOS_117_Flybase[data.seurat$orig.ident == "Pan_neuro_ND75KD"]) 
+```
+
+This is significant but the difference of means is very very low. Mean of ND75-KD is slightly lower than mean of Control
+What about significance in each cluster / cell-type?
+
+```{r}
+data.sig <- data.frame(annotation_clusters = unique(data.seurat$annotation_clusters), p.value = 1, log.fold.change = 0)
+rownames(data.sig) = as.character(data.sig$annotation_clusters)
+for(clust in rownames(data.sig)){
+  ctrl <- data.seurat$AUC_OXPHOS_117_Flybase[data.seurat$orig.ident == "Pan_neuro_control" & data.seurat$annotation_clusters == clust]
+  nd75kd <- data.seurat$AUC_OXPHOS_117_Flybase[data.seurat$orig.ident == "Pan_neuro_ND75KD" & data.seurat$annotation_clusters == clust]
+  if(length(ctrl) < 5 | length(nd75kd) < 5){
+    data.sig[clust, "p.value"] <- NA
+    data.sig[clust, "log.fold.change"] <- NA
+  } else {
+    data.sig[clust, "p.value"] <- t.test(ctrl, nd75kd)$p.value
+    data.sig[clust, "log.fold.change"] <-  log2(mean(nd75kd)) - log2(mean(ctrl))
+  }
+}
+data.sig <- data.sig[with(data.sig, order(p.value)),]
+data.sig
+```
+
+**Of note:** Our cluster 2 & 23 of interest are not there because there are not enough cells in CTRL to compute p-value
+- Cluster 23: 2 ctrl cells vs 331 ND-75KD cells
+- Cluster 2: 4 ctrl cells vs 813 ND-75KD cells
+
+```{r}
+ggplotly(ggplot(data.sig, aes(x = log.fold.change, y = -log10(p.value), text = annotation_clusters)) + geom_point() + ggtitle("Volcano plot - Ctrl vs ND-75KD - 117 OXPHOS genes"))
+```
+
+```{r, fig.width = 12}
+data.sig$annotation_clusters <- factor(data.sig$annotation_clusters, levels = data.sig$annotation_clusters)
+ggplot(data.sig, aes(y = -log10(p.value), x = annotation_clusters)) + geom_bar(stat="identity") + ggtitle("t-test p-values - Ctrl vs ND-75KD - 117 OXPHOS genes") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+```{r, fig.width=12}
+# Extracting the relevant metadata
+metadata <- as.data.frame(data.seurat@meta.data)
+
+# Calculating median values of "AUC_OXPHOS_117_Flybase" for each group
+median_values <- tapply(metadata$AUC_OXPHOS_117_Flybase, metadata$seurat_clusters, median)
+
+# Sorting the metadata based on median values
+metadata$seurat_clusters <- factor(metadata$seurat_clusters, levels = names(sort(median_values, decreasing = F)))
+
+# Plotting a violin plot using ggplot2
+ggplot(metadata, aes(x = seurat_clusters, y = AUC_OXPHOS_117_Flybase)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(x = "Seurat Clusters", y = "AUC_OXPHOS_117_Flybase")
+```
+
+```{r, fig.width=12}
+# Extracting the relevant metadata
+metadata <- as.data.frame(data.seurat@meta.data)
+
+# Calculating median values of "AUC_OXPHOS_117_Flybase" for each group
+median_values <- tapply(metadata$AUC_OXPHOS_117_Flybase, metadata$annotation, median)
+
+# Sorting the metadata based on median values
+metadata$annotation <- factor(metadata$annotation, levels = names(sort(median_values, decreasing = F)))
+
+# Plotting a violin plot using ggplot2
+ggplot(metadata, aes(x = annotation, y = AUC_OXPHOS_117_Flybase)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(x = "Seurat Clusters", y = "AUC_OXPHOS_117_Flybase")
+```
+
+```{r, fig.width=12}
+# Extracting the relevant metadata
+metadata <- as.data.frame(data.seurat@meta.data)
+
+# Calculating median values of "AUC_OXPHOS_117_Flybase" for each group
+median_values <- tapply(metadata$AUC_OXPHOS_117_Flybase, metadata$annotation_clusters, median)
+
+# Sorting the metadata based on median values
+metadata$annotation_clusters <- factor(metadata$annotation_clusters, levels = names(sort(median_values, decreasing = F)))
+
+# Plotting a violin plot using ggplot2
+ggplot(metadata, aes(x = annotation_clusters, y = AUC_OXPHOS_117_Flybase)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(x = "Seurat Clusters / Emma's Annotation", y = "AUC_OXPHOS_117_Flybase")
+```
+
+Separate by condition (but keep global order)
+
+```{r, fig.width=12}
+# Extracting the relevant metadata
+metadata <- as.data.frame(data.seurat@meta.data)
+
+# Calculating median values of "AUC_OXPHOS_117_Flybase" for each group
+median_values <- tapply(metadata$AUC_OXPHOS_117_Flybase, metadata$annotation_clusters, median)
+
+# Sorting the metadata based on median values
+metadata$annotation_clusters <- factor(metadata$annotation_clusters, levels = names(sort(median_values, decreasing = F)))
+
+# Plotting a violin plot using ggplot2
+ggplot(metadata, aes(x = annotation_clusters, y = AUC_OXPHOS_117_Flybase)) +
+  geom_boxplot() +
+  theme_minimal() +
+  theme(legend.position = "none", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(x = "Seurat Clusters / Emma's Annotation", y = "AUC_OXPHOS_117_Flybase") + facet_grid(orig.ident ~ .)
+```
+
+Separate by condition (and reorder)
+
+```{r, fig.width=12, fig.height=10}
+p <- list()
+for(exp in c("Pan_neuro_control", "Pan_neuro_ND75KD")){
+  # Extracting the relevant metadata
+  metadata <- as.data.frame(data.seurat@meta.data[data.seurat$orig.ident == exp,])
+  
+  # Calculating median values of "AUC_OXPHOS_117_Flybase" for each group
+  median_values <- tapply(metadata$AUC_OXPHOS_117_Flybase, metadata$annotation_clusters, median)
+  
+  # Sorting the metadata based on median values
+  metadata$annotation_clusters <- factor(metadata$annotation_clusters, levels = names(sort(median_values, decreasing = F)))
+  
+  # Plotting a violin plot using ggplot2
+  p[[exp]] <- ggplot(metadata, aes(x = annotation_clusters, y = AUC_OXPHOS_117_Flybase)) +
+    geom_boxplot() +
+    theme_minimal() +
+    theme(legend.position = "none", axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    labs(x = "Seurat Clusters / Emma's Annotation", y = "AUC_OXPHOS_117_Flybase") + ggtitle(exp)
+}
+ggarrange(plotlist = p, nrow = 2, ncol = 1)
+```
+
+```{r}
+DimPlot(data.seurat, reduction = "tsne_harmony", label = TRUE, pt.size = 0.5) + NoLegend()
+```
+
+```{r, fig.height=15, fig.width=15}
+DimPlot(data.seurat, reduction = "tsne_harmony", label = TRUE, pt.size = 0.5, group.by = "annotation") + NoLegend()
+```
+
+```{r, fig.height=15, fig.width=15}
+DimPlot(data.seurat, reduction = "tsne_harmony", label = TRUE, pt.size = 0.5, group.by = "annotation_clusters") + NoLegend()
+```
+
+## VII.5 Plots
+
+```{r, fig.height=6, fig.width=8}
+FeaturePlot(data.seurat, reduction = "umap_harmony", pt.size = 0.5, order = T, features = "AUC_OXPHOS_117_Flybase")
+```
+
+```{r, fig.height=6, fig.width=8}
+FeaturePlot(data.seurat, reduction = "tsne_harmony", order = T, pt.size = 0.5, features = "AUC_OXPHOS_117_Flybase")
+```
+
+```{r, fig.height=6, fig.width=8}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", order = T, pt.size = 0.5, features = "AUC_OXPHOS_117_Flybase")
+```
+
+```{r, fig.height=6, fig.width=8}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedtsne", order = T, pt.size = 0.5, features = "AUC_OXPHOS_117_Flybase")
+```
+
+```{r, fig.height = 6, fig.width = 14}
+display.boxplot.metadata(data.seurat, "AUC_OXPHOS_117_Flybase")
+```
+
+```{r, fig.height = 10, fig.width = 12}
+display.boxplot.metadata.per.lib(data.seurat, "AUC_OXPHOS_117_Flybase")
+```
+
+## IV. CRC (Atf4) regulon
+
+```{r, fig.height=5, fig.width=8}
+my_comparisons <- list( c("Pan_neuro_control", "Pan_neuro_ND75KD") )
+
+VlnPlot(data.seurat, features = "SCENIC_crc_activating_regulon", group.by = "orig.ident") + labs(x = "", y = "SCENIC - crc (activating regulon)") + theme(axis.text.x = element_text(angle = 0, vjust = 1, hjust=0.5)) + stat_compare_means(comparisons = my_comparisons, label.y = 0.6)
+```
+
+Statistical significance? (t-test)
+
+```{r}
+t.test(data.seurat$SCENIC_crc_activating_regulon[data.seurat$orig.ident == "Pan_neuro_control"], data.seurat$SCENIC_crc_activating_regulon[data.seurat$orig.ident == "Pan_neuro_ND75KD"]) 
+```
+
+This is significant. Mean of ND75-KD is slightly higher than mean of Control
+What about significance in each cluster / cell-type?
+
+```{r}
+data.sig <- data.frame(annotation_clusters = unique(data.seurat$annotation_clusters), p.value = 1, log.fold.change = 0)
+rownames(data.sig) = as.character(data.sig$annotation_clusters)
+for(clust in rownames(data.sig)){
+  ctrl <- data.seurat$SCENIC_crc_activating_regulon[data.seurat$orig.ident == "Pan_neuro_control" & data.seurat$annotation_clusters == clust]
+  nd75kd <- data.seurat$SCENIC_crc_activating_regulon[data.seurat$orig.ident == "Pan_neuro_ND75KD" & data.seurat$annotation_clusters == clust]
+  if(length(ctrl) < 5 | length(nd75kd) < 5){
+    data.sig[clust, "p.value"] <- NA
+    data.sig[clust, "log.fold.change"] <- NA
+  } else {
+    data.sig[clust, "p.value"] <- t.test(ctrl, nd75kd)$p.value
+    data.sig[clust, "log.fold.change"] <-  log2(mean(nd75kd)) - log2(mean(ctrl))
+  }
+}
+data.sig <- data.sig[with(data.sig, order(p.value)),]
+data.sig
+```
+
+**Of note:** Our cluster 2 & 23 of interest are not there because there are not enough cells in CTRL to compute p-value
+- Cluster 23: 2 ctrl cells vs 331 ND-75KD cells
+- Cluster 2: 4 ctrl cells vs 813 ND-75KD cells
+
+```{r}
+ggplotly(ggplot(data.sig, aes(x = log.fold.change, y = -log10(p.value), text = annotation_clusters)) + geom_point() + ggtitle("Volcano plot - Ctrl vs ND-75KD - Regulon crc (Atf4)"))
+```
+
+```{r, fig.width = 12}
+data.sig$annotation_clusters <- factor(data.sig$annotation_clusters, levels = data.sig$annotation_clusters)
+ggplot(data.sig, aes(y = -log10(p.value), x = annotation_clusters)) + geom_bar(stat="identity") + ggtitle("t-test p-values - Ctrl vs ND-75KD - Regulon crc (Atf4)") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+## V. Imp vs OXPHOS
+
+```{r}
+metadata <- data.seurat@meta.data
+metadata$Imp_expression <- data.seurat@assays$RNA@data["Imp",]
+metadata$pros_expression <- data.seurat@assays$RNA@data["pros",]
+
+ggplot(metadata, aes(x = AUC_OXPHOS_117_Flybase, y = metadata$Imp_expression)) + geom_point() + ylab("Imp expression")
+ggplot(metadata, aes(x = AUC_OXPHOS_117_Flybase, y = metadata$pros_expression)) + geom_point() + ylab("pros expression")
+```
+

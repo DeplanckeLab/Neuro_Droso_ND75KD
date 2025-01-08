@@ -1,15 +1,18 @@
 ---
-title: "Emma Pan Neuro (Control + ND75KD) - Reannotation"
+title: "Emma Pan Neuro (Control + ND75KD)"
+description: "Figure 1B"
 author: "Vincent Gardeux"
 date: "2024/05/01"
+updated: "2025/01/08"
 output:
   html_document:
     df_print: paged
 ---
+
   
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_knit$set(root.dir = "~/SVRAW1/gardeux/2023-04-19_Emma_snRNAseq/analysis/")
+knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
 ```
 
 ## Libraries & functions
@@ -17,7 +20,8 @@ knitr::opts_knit$set(root.dir = "~/SVRAW1/gardeux/2023-04-19_Emma_snRNAseq/analy
 First, I'm loading the required libraries & functions
 
 ```{r}
-suppressPackageStartupMessages(library(Seurat)) # For single-cell pipeline
+suppressPackageStartupMessages(library(Seurat, lib.loc = "/software/Seuratv4/lib/")) # Seurat v4.4.0, library for single-cell analysis
+suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/software/Seuratv4/lib/")) # For compatibility purpose
 suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
 suppressPackageStartupMessages(library(ggplot2)) # For plotting
 suppressPackageStartupMessages(library(ggpubr)) # For grid plotting
@@ -25,14 +29,11 @@ suppressPackageStartupMessages(library(plotly)) # For interactive plots
 suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
 
 cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("SeuratObject"), "version", as.character(packageVersion("SeuratObject")), "\n")
 cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
 cat(bold("ggplot2"), "version", as.character(packageVersion("ggplot2")), "\n")
 cat(bold("ggpubr"), "version", as.character(packageVersion("ggpubr")), "\n")
 cat(bold("plotly"), "version", as.character(packageVersion("plotly")), "\n")
-
-# Parameters
-seurat_integrated <- "Pan_neuro_both_reannotated_GFP_curated_reintegrated_SCENIC_binarized.rds"
-seurat_output <- "Pan_neuro_both_SCENIC_reannotated_2014_05_01.rds"
 
 # Color-blind friendly palette 3-colors
 cbPalette <- c("#E69F00", "#000000", "#56B4E9")
@@ -40,6 +41,13 @@ steinPalette <- c("#80C980", "#BDADD4", "#376CB0", "#FBBF85", "#F0027E")
 
 # Random seed
 set.seed(42)
+```
+
+## Parameters
+
+```{r}
+input_seurat_object <- "./data/Pan_neuro_both_reannotated_GFP_curated_reintegrated_SCENIC_binarized.rds"
+output_figure_prefix <- "./figures/FigureS1D/StackedBarplot_Head_Clusters_By_Genetics"
 ```
 
 ## I. Reading Seurat object
