@@ -2,7 +2,7 @@
 title: "Creating ASAP/SCENIC-compatible Loom file from Seurat object"
 author: "Vincent Gardeux"
 date: "2024/03/05"
-updated: "2024/06/14"
+updated: "2025/01/09"
 output:
   html_document:
     df_print: paged
@@ -18,30 +18,30 @@ knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
 First, I'm loading the required libraries & functions
 
 ```{r}
-suppressPackageStartupMessages(library(Seurat)) # For single-cell pipeline
+suppressPackageStartupMessages(library(Seurat, lib.loc = "/software/Seuratv4/lib/")) # Seurat v4.4.0, library for single-cell analysis
+suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/software/Seuratv4/lib/")) # For compatibility purpose
 suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
 suppressPackageStartupMessages(library(loomR)) # For building a file for ASAP
 suppressPackageStartupMessages(library(Matrix)) # For building a file for ASAP
 suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
 
 cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("SeuratObject"), "version", as.character(packageVersion("SeuratObject")), "\n")
 cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
 cat(bold("loomR"), "version", as.character(packageVersion("loomR")), "\n")
 cat(bold("Matrix"), "version", as.character(packageVersion("Matrix")), "\n")
 ```
 
-
 ## Parameters
+
 ```{r}
 # Parameters
-seurat_input <- "data/Pan_neuro_integrated.rds"
-loom_output <- "data/Pan_neuro_integrated.loom"
+seurat_input <- "data/Pan_neuro_integrated_FINAL.rds"
+loom_output <- "data/Pan_neuro_integrated_FINAL.loom"
 
 # Random seed
 set.seed(42)
 ```
-First, I'm loading the required libraries & functions
-
 
 ## I.1 Reading Seurat object
 
@@ -146,14 +146,17 @@ data.loom$add.col.attribute(list(Harmony=data.seurat@reductions$harmony@cell.emb
 data.loom$add.col.attribute(list(t_SNE_harmony=data.seurat@reductions$tsne_harmony@cell.embeddings), overwrite = TRUE)
 data.loom$add.col.attribute(list(UMAP_harmony=data.seurat@reductions$umap_harmony@cell.embeddings), overwrite = TRUE)
 
-data.loom$add.col.attribute(list(Harmony=data.seurat@reductions$harmony_overcorrected@cell.embeddings), overwrite = TRUE)
-data.loom$add.col.attribute(list(t_SNE_harmony=data.seurat@reductions$tsne_harmony_overcorrected@cell.embeddings), overwrite = TRUE)
-data.loom$add.col.attribute(list(UMAP_harmony=data.seurat@reductions$umap_harmony_overcorrected@cell.embeddings), overwrite = TRUE)
+data.loom$add.col.attribute(list(Harmony_overcorrected=data.seurat@reductions$harmony_overcorrected@cell.embeddings), overwrite = TRUE)
+data.loom$add.col.attribute(list(t_SNE_harmony_overcorrected=data.seurat@reductions$tsne_harmony_overcorrected@cell.embeddings), overwrite = TRUE)
+data.loom$add.col.attribute(list(UMAP_harmony_overcorrected=data.seurat@reductions$umap_harmony_overcorrected@cell.embeddings), overwrite = TRUE)
 
-#data.loom$add.col.attribute(list(t_SNE_SCENIC_non_binarized=data.seurat@reductions$SCENICnonbinarizedtsne@cell.embeddings), overwrite = TRUE)
-#data.loom$add.col.attribute(list(UMAP_SCENIC_non_binarized=data.seurat@reductions$SCENICnonbinarizedumap@cell.embeddings), overwrite = TRUE)
-#data.loom$add.col.attribute(list(t_SNE_SCENIC_binarized=data.seurat@reductions$SCENICbinarizedtsne@cell.embeddings), overwrite = TRUE)
-#data.loom$add.col.attribute(list(UMAP_SCENIC_binarized=data.seurat@reductions$SCENICbinarizedumap@cell.embeddings), overwrite = TRUE)
+data.loom$add.col.attribute(list(SCENIC=data.seurat@reductions$SCENIC@cell.embeddings), overwrite = TRUE)
+data.loom$add.col.attribute(list(t_SNE_SCENIC=data.seurat@reductions$SCENICtsne@cell.embeddings), overwrite = TRUE)
+data.loom$add.col.attribute(list(UMAP_SCENIC=data.seurat@reductions$SCENICumap@cell.embeddings), overwrite = TRUE)
+
+data.loom$add.col.attribute(list(SCENIC_binarized=data.seurat@reductions$SCENICbinarized@cell.embeddings), overwrite = TRUE)
+data.loom$add.col.attribute(list(t_SNE_SCENIC_binarized=data.seurat@reductions$SCENICbinarizedtsne@cell.embeddings), overwrite = TRUE)
+data.loom$add.col.attribute(list(UMAP_SCENIC_binarized=data.seurat@reductions$SCENICbinarizedumap@cell.embeddings), overwrite = TRUE)
 ```
 
 # Close the Loom file
