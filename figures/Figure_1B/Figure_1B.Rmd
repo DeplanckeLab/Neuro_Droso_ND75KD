@@ -2,8 +2,8 @@
 title: "Emma Pan Neuro (Control + ND75KD)"
 description: "Figure 1B"
 author: "Vincent Gardeux"
-date: "2024/05/01"
-updated: "2025/01/08"
+date: "2025/01/09"
+updated: "2025/01/09"
 output:
   html_document:
     df_print: paged
@@ -38,6 +38,165 @@ cat(bold("plotly"), "version", as.character(packageVersion("plotly")), "\n")
 # Color-blind friendly palette 3-colors
 cbPalette <- c("#E69F00", "#000000", "#56B4E9")
 steinPalette <- c("#80C980", "#BDADD4", "#376CB0", "#FBBF85", "#F0027E")
+celltypePalette <- list(
+  # 1) Singleton / special cases
+  `unannotated` = "#D3D3D3",
+  `epithelial cell` = "#E0AC69",
+  `skeletal muscle of head` = "#895129",
+  
+  # 2) Photoreceptor-family cells (Yellows gradient)
+  `cone cell`              = "#FFFFB7",
+  `outer photoreceptor cell` = "#FFF060",
+  `photoreceptor cell`     = "#F2DB00",
+  `photoreceptor-like cell` = "#F0C200",
+  
+  # 3) Glial cells (Purples gradient)
+  `adult optic chiasma glial cell`         = "#F2F0F7",
+  `adult brain cell body glial cell`       = "#DADAEB",
+  `adult brain perineurial glial cell`     = "#BCBDDC",
+  `adult lamina epithelial/marginal glial cell` = "#9E9AC8",
+  `adult reticular neuropil associated glial cell` = "#756BB1",
+  `optic lobe associated cortex glial cell` = "#54278F",
+  
+  # 4) Broad neurotransmitter classes (Set1)
+  `cholinergic neuron`    = "#E41A1C",
+  `gabaergic neuron`      = "#377EB8",
+  `glutamatergic neuron`  = "#4DAF4A",
+  `dopaminergic neuron`   = "#984EA3",
+  `serotonergic neuron`   = "#FF7F00",
+  
+  # 5) OPN neuron (single)
+  `OPN neuron` = "#A6CEE3",
+  
+  # 6) T / columnar neurons (Blues gradient)
+  `columnar neuron T1` = "#DEEBF7",
+  `T neuron T3`        = "#9ECAE1",
+  `T neuron T4/T5`     = "#3182BD",
+  
+  # 7) Distal / proximal medullary amacrine (Greens gradient)
+  `distal medullary amacrine neuron Dm3` = "#E5F5E0",
+  `distal medullary amacrine neuron Dm8` = "#A1D99B",
+  `distal medullary amacrine neuron Dm9` = "#31A354",
+  `proximal medullary amacrine neuron Pm4` = "#006D2C",
+  
+  # 8) Centrifugal neurons (2-color subset of Accent)
+  `centrifugal neuron C2` = "#7FC97F",
+  `centrifugal neuron C3` = "#BEAED4",
+  
+  # 9) Medullary intrinsic neurons (Purples, 3 shades)
+  `medullary intrinsic neuron Mi1`  = "#EFEDF5",
+  `medullary intrinsic neuron Mi4`  = "#BCBDDC",
+  `medullary intrinsic neuron Mi15` = "#756BB1",
+  
+  # 10) Transmedullary neurons (teal gradient)
+  `transmedullary neuron Tm1`   = "#e0f3f8",
+  `transmedullary neuron Tm2`   = "#bfdfe7",
+  `transmedullary neuron Tm9`   = "#7eb5c4",
+  `transmedullary neuron Tm20`  = "#9fcad5",
+  `transmedullary Y neuron TmY14` = "#5da1b3",
+  `transmedullary Y neuron TmY5a` = "#3c8ca2",
+  `transmedullary Y neuron TmY8`  = "#1a7790",
+  `tm5ab`                         = "#014636",
+  
+  # 11) Lamina monopolar + wide-field (Oranges gradient)
+  `lamina monopolar neuron L1 + L2` = "#FEEDDE",
+  `lamina monopolar neuron L3`      = "#FDBE85",
+  `lamina monopolar neuron L4`      = "#FD8D3C",
+  `lamina monopolar neuron L5`      = "#E6550D",
+  `lamina wide-field 2 neuron`      = "#A63603",
+  
+  # 12) Lobular columnar neuron (single)
+  `lobular columnar neuron LC12` = "#BC80BD",
+  
+  # 13) Other singletons
+  `olfactory receptor neuron` = "#CCEBC5",
+  `Poxn neuron`               = "#FFED6F",
+  `hemocyte`                  = "#999999",
+  `kenyon cell`               = "#B3E2CD",
+  `gamma kenyon cell`         = "#FDCDAC",
+  `pigment cell`              = "#EE82EE"
+)
+
+celltypePalette <- list(
+  # 1) Singleton / special cases
+  `unannotated` = "#D3D3D3",
+  `epithelial cell` = "#E0AC69",
+  `skeletal muscle of head` = "#895129",
+  
+  # 2) Photoreceptor-family cells (Yellows gradient)
+  `cone cell`              = "#FFFFB7",
+  `outer photoreceptor cell` = "#FFF060",
+  `photoreceptor cell`     = "#F2DB00",
+  `photoreceptor-like cell` = "#F0C200",
+  
+  # 3) Glial cells (Purples gradient)
+  `adult optic chiasma glial cell`         = "#d896ff",
+  `adult brain cell body glial cell`       = "#efbbff",
+  `adult brain perineurial glial cell`     = "#BCBDDC",
+  `adult lamina epithelial/marginal glial cell` = "#9E9AC8",
+  `adult reticular neuropil associated glial cell` = "#756BB1",
+  `optic lobe associated cortex glial cell` = "#54278F",
+  
+  # 4) Broad neurotransmitter classes (Set1)
+  `cholinergic neuron`    = "#E41A1C",
+  `gabaergic neuron`      = "#377EB8",
+  `glutamatergic neuron`  = "#4DAF4A",
+  `dopaminergic neuron`   = "#984EA3",
+  `serotonergic neuron`   = "#FF7F00",
+  
+  # 5) OPN neuron (single)
+  `OPN neuron` = "#A6CEE3",
+  
+  # 6) T / columnar neurons (Blues gradient)
+  `columnar neuron T1` = "#DEEBF7",
+  `T neuron T3`        = "#9ECAE1",
+  `T neuron T4/T5`     = "#3182BD",
+  
+  # 7) Distal / proximal medullary amacrine (Greens gradient)
+  `distal medullary amacrine neuron Dm3` = "#c6e6ba",
+  `distal medullary amacrine neuron Dm8` = "#A1D99B",
+  `distal medullary amacrine neuron Dm9` = "#31A354",
+  `proximal medullary amacrine neuron Pm4` = "#006D2C",
+  
+  # 8) Centrifugal neurons (2-color subset of Accent)
+  `centrifugal neuron C2` = "#7FC97F",
+  `centrifugal neuron C3` = "#BEAED4",
+  
+  # 9) Medullary intrinsic neurons (Purples, 3 shades)
+  `medullary intrinsic neuron Mi1`  = "#d8d5eb",
+  `medullary intrinsic neuron Mi4`  = "#BCBDDC",
+  `medullary intrinsic neuron Mi15` = "#756BB1",
+  
+  # 10) Transmedullary neurons (teal gradient)
+  `transmedullary neuron Tm1`   = "#b4dee9",
+  `transmedullary neuron Tm2`   = "#bfdfe7",
+  `transmedullary neuron Tm9`   = "#7eb5c4",
+  `transmedullary neuron Tm20`  = "#9fcad5",
+  `transmedullary Y neuron TmY14` = "#5da1b3",
+  `transmedullary Y neuron TmY5a` = "#3c8ca2",
+  `transmedullary Y neuron TmY8`  = "#1a7790",
+  `tm5ab`                         = "#014636",
+  
+  # 11) Lamina monopolar + wide-field (Oranges gradient)
+  `lamina monopolar neuron L1 + L2` = "#FDD3A0",
+  `lamina monopolar neuron L3`      = "#FDBE85",
+  `lamina monopolar neuron L4`      = "#FD8D3C",
+  `lamina monopolar neuron L5`      = "#E6550D",
+  `lamina wide-field 2 neuron`      = "#A63603",
+  
+  # 12) Lobular columnar neuron (single)
+  `lobular columnar neuron LC12` = "#BC80BD",
+  
+  # 13) Other singletons
+  `olfactory receptor neuron` = "#CCEBC5",
+  `Poxn neuron`               = "#FFED6F",
+  `hemocyte`                  = "#999999",
+  `kenyon cell`               = "#B3E2CD",
+  `gamma kenyon cell`         = "#FDCDAC",
+  `pigment cell`              = "#EE82EE"
+)
+
+
 
 # Random seed
 set.seed(42)
@@ -46,8 +205,8 @@ set.seed(42)
 ## Parameters
 
 ```{r}
-input_seurat_object <- "./data/Pan_neuro_both_reannotated_GFP_curated_reintegrated_SCENIC_binarized.rds"
-output_figure_prefix <- "./figures/FigureS1D/StackedBarplot_Head_Clusters_By_Genetics"
+input_seurat_object <- "./data/Pan_neuro_integrated_FINAL.rds"
+output_figure_prefix <- "./figures/Figure_1B/UMAP_Harmony"
 ```
 
 ## I. Reading Seurat object
@@ -56,15 +215,17 @@ First step is to read the Seurat objects, previously created
 
 ```{r}
 message("Loading Seurat object...")
-data.seurat <- readRDS(seurat_integrated)
+data.seurat <- readRDS(input_seurat_object)
 message(ncol(data.seurat), " cells were loaded")
 message(nrow(data.seurat), " genes were loaded")
 ```
 
-```{r, fig.height = 12, fig.width = 13}
-DimPlot(data.seurat, reduction = "tsne_harmony", label = TRUE, pt.size = 0.5, group.by = "annotation_emma_merged") + NoLegend()
+```{r, fig.height = 12, fig.width = 12}
+p <- DimPlot(data.seurat, reduction = "umap_harmony", label = TRUE, pt.size = 0.5, group.by = "annotation", repel = F, cols = celltypePalette) + NoLegend()
+p
 ```
 
-```{r, fig.height = 12, fig.width = 13}
-DimPlot(data.seurat, reduction = "umap_harmony", label = TRUE, pt.size = 0.5, group.by = "annotation_emma_merged") + NoLegend()
+```{r, fig.height = 12, fig.width = 12}
+ggsave(p, filename = paste0(output_figure_prefix, ".pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, ".png"), width = 12, height = 12, dpi = 1000, bg = 'white')
 ```
