@@ -61,6 +61,8 @@ gene.mapping = fread('data/features.tsv', header = F, data.table = F)
 colnames(gene.mapping) <- c("Ensembl", "Name", "Biotype")
 gene.mapping$Name <- gsub(x = gene.mapping$Name, pattern = "_", replacement = "-")
 rownames(gene.mapping) <- gene.mapping$Name
+# To solve issue with ASAP DB
+gene.mapping$Ensembl <- gsub(x = gene.mapping$Ensembl, pattern = "-", replacement = "_")
 gene.mapping
 ```
 

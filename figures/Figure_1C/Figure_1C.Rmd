@@ -1,0 +1,81 @@
+---
+title: "Emma Pan Neuro (Control + ND75KD)"
+description: "Figure 1B"
+author: "Vincent Gardeux"
+date: "2025/01/09"
+updated: "2025/01/09"
+output:
+  html_document:
+    df_print: paged
+---
+
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
+```
+
+## Libraries & functions
+
+First, I'm loading the required libraries & functions
+
+```{r}
+suppressPackageStartupMessages(library(Seurat, lib.loc = "/software/Seuratv4/lib/")) # Seurat v4.4.0, library for single-cell analysis
+suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/software/Seuratv4/lib/")) # For compatibility purpose
+suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
+suppressPackageStartupMessages(library(ggplot2)) # For plotting
+suppressPackageStartupMessages(library(ggpubr)) # For grid plotting
+suppressPackageStartupMessages(library(plotly)) # For interactive plots
+suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
+
+cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("SeuratObject"), "version", as.character(packageVersion("SeuratObject")), "\n")
+cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
+cat(bold("ggplot2"), "version", as.character(packageVersion("ggplot2")), "\n")
+cat(bold("ggpubr"), "version", as.character(packageVersion("ggpubr")), "\n")
+cat(bold("plotly"), "version", as.character(packageVersion("plotly")), "\n")
+
+# Color-blind friendly palette 3-colors
+cbPalette <- c("#E69F00", "#000000", "#56B4E9")
+steinPalette <- c("#80C980", "#BDADD4", "#376CB0", "#FBBF85", "#F0027E")
+tissuePalette <- list(`Pan_neuro_control`="#E69F00", `Pan_neuro_ND75KD`="#56B4E9")
+celltypePalette <- list(`unannotated`="#D3D3D3", `epithelial cell`="#E0AC69", `skeletal muscle of head`="#895129", `cone cell`="#FFFFB7", `outer photoreceptor cell`="#FFF060", `photoreceptor cell`="#F2DB00", `photoreceptor-like cell`="#F0C200", `adult optic chiasma glial cell`="#d896ff", `adult brain cell body glial cell`="#efbbff", `adult brain perineurial glial cell`="#BCBDDC", `adult lamina epithelial/marginal glial cell`="#9E9AC8", `adult reticular neuropil associated glial cell`="#756BB1", `optic lobe associated cortex glial cell`="#54278F", `cholinergic neuron`="#E41A1C", `gabaergic neuron`="#377EB8", `glutamatergic neuron`="#4DAF4A", `dopaminergic neuron`="#984EA3", `serotonergic neuron`="#FF7F00", `OPN neuron`="#A6CEE3", `columnar neuron T1`="#DEEBF7", `T neuron T3`="#9ECAE1", `T neuron T4/T5`="#3182BD", `distal medullary amacrine neuron Dm3`="#c6e6ba", `distal medullary amacrine neuron Dm8`="#A1D99B", `distal medullary amacrine neuron Dm9`="#31A354", `proximal medullary amacrine neuron Pm4`="#006D2C", `centrifugal neuron C2`="#7FC97F", `centrifugal neuron C3`="#BEAED4", `medullary intrinsic neuron Mi1`="#d8d5eb", `medullary intrinsic neuron Mi4`="#BCBDDC", `medullary intrinsic neuron Mi15`="#756BB1", `transmedullary neuron Tm1`="#b4dee9", `transmedullary neuron Tm2`="#bfdfe7", `transmedullary neuron Tm9`="#7eb5c4", `transmedullary neuron Tm20`="#9fcad5", `transmedullary Y neuron TmY14`="#5da1b3", `transmedullary Y neuron TmY5a`="#3c8ca2", `transmedullary Y neuron TmY8`="#1a7790", `tm5ab`="#014636", `lamina monopolar neuron L1 + L2`="#FDD3A0", `lamina monopolar neuron L3`="#FDBE85", `lamina monopolar neuron L4`="#FD8D3C", `lamina monopolar neuron L5`="#E6550D", `lamina wide-field 2 neuron`="#A63603", `lobular columnar neuron LC12`="#BC80BD", `olfactory receptor neuron`="#CCEBC5", `Poxn neuron`="#FFED6F", `hemocyte`="#999999", `kenyon cell`="#B3E2CD", `gamma kenyon cell`="#FDCDAC", `pigment cell`="#EE82EE")
+
+
+# Random seed
+set.seed(42)
+```
+
+## Parameters
+
+```{r}
+input_seurat_object <- "./data/Pan_neuro_integrated_FINAL.rds"
+output_figure_prefix <- "./figures/Figure_1C/UMAP_Harmony"
+```
+
+## I. Reading Seurat object
+
+First step is to read the Seurat objects, previously created
+
+```{r}
+message("Loading Seurat object...")
+data.seurat <- readRDS(input_seurat_object)
+message(ncol(data.seurat), " cells were loaded")
+message(nrow(data.seurat), " genes were loaded")
+```
+
+```{r, fig.height = 12, fig.width = 12}
+p <- DimPlot(data.seurat, reduction = "umap_harmony", label = FALSE, pt.size = 0.5, group.by = "orig.ident", repel = F, cols = tissuePalette) + NoLegend()
+p
+```
+
+```{r, fig.height = 12, fig.width = 12}
+ggsave(p, filename = paste0(output_figure_prefix, ".pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, ".png"), width = 12, height = 12, dpi = 1000, bg = 'white')
+```
+
+```{r, fig.height = 12, fig.width = 12}
+p <- DimPlot(data.seurat, reduction = "umap_harmony", label = FALSE, pt.size = 0.5, group.by = "orig.ident", repel = F, cols = tissuePalette)
+ggsave(p, filename = paste0(output_figure_prefix, "_legend.pdf"), width = 12, height = 12, bg = "white")
+```
+

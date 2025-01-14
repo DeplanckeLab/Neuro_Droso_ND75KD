@@ -1,0 +1,138 @@
+---
+title: "Creating h5ad file from Seurat object"
+author: "Vincent Gardeux"
+date: "2025/01/14"
+updated: "2025/01/14"
+output:
+  html_document:
+    df_print: paged
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
+```
+
+## Libraries & functions
+
+First, I'm loading the required libraries & functions
+
+```{r}
+suppressPackageStartupMessages(library(Seurat, lib.loc = "/software/Seuratv4/lib/")) # Seurat v4.4.0, library for single-cell analysis
+suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/software/Seuratv4/lib/")) # For compatibility purpose
+suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
+suppressPackageStartupMessages(library(reticulate)) # For writing DE gene file
+suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
+
+cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("SeuratObject"), "version", as.character(packageVersion("SeuratObject")), "\n")
+cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
+cat(bold("reticulate"), "version", as.character(packageVersion("reticulate")), "\n")
+cat(bold("Matrix"), "version", as.character(packageVersion("Matrix")), "\n")
+```
+
+## Parameters
+
+```{r}
+# Parameters
+seurat_input <- "data/Pan_neuro_integrated_FINAL.rds"
+h5ad_output <- "data/Pan_neuro_integrated_FINAL.h5ad"
+
+# Random seed
+set.seed(42)
+```
+
+## I.1 Reading Seurat object
+
+First step is to read the Seurat object, previously created
+
+```{r}
+message("Loading Seurat object...")
+data.seurat <- readRDS(seurat_input)
+message(ncol(data.seurat), " cells were loaded")
+message(nrow(data.seurat), " genes were loaded")
+```
+
+## I.2 Loading gene mapping from CellRanger output (I did not perform the CellRanger alignment)
+
+```{r}
+gene.mapping = fread('data/features.tsv', header = F, data.table = F)
+colnames(gene.mapping) <- c("Ensembl", "Name", "Biotype")
+gene.mapping$Name <- gsub(x = gene.mapping$Name, pattern = "_", replacement = "-")
+rownames(gene.mapping) <- gene.mapping$Name
+# To solve issue with ASAP DB
+gene.mapping$Ensembl <- gsub(x = gene.mapping$Ensembl, pattern = "-", replacement = "_")
+gene.mapping
+```
+
+## II. h5ad
+
+NOTE: I could use sceasy or SeuratDisk option, but it does not do what I want. And there are many missing fields. So I'll create the h5ad from scratch.
+
+# Prepare Cell attributes to put in h5ad
+
+```{r}
+# Cell metadata
+obs <- data.seurat@meta.data
+```
+
+# Raw matrix (I remove colnames and rownames)
+
+```{r}
+# Raw count matrix
+raw.X <- GetAssayData(object = data.seurat, assay = "RNA", slot = "counts")
+colnames(raw.X) <- NULL
+rownames(raw.X) <- NULL
+```
+
+# Prepare Gene metadata to put in h5ad
+
+```{r}
+# Gene metadata
+var <- GetAssay(data.seurat, assay = "RNA")@meta.features
+var$Accession <- gene.mapping[rownames(var),"Ensembl"]
+var$Gene <- rownames(var)
+var
+```
+
+# Normalized matrix
+
+```{r}
+# Normalized count matrix
+X <- GetAssayData(object = data.seurat, assay = "RNA", slot = "data")
+```
+
+# Fix row names
+```{r}
+rownames(X) <- var[rownames(X), "Accession"]
+rownames(var) <- var$Accession
+```
+
+# Embeddings
+
+```{r}
+obsm <- NULL
+reductions <- names(data.seurat@reductions)
+if (length(reductions) > 0) {
+  obsm <- sapply(
+    reductions,
+    function(name) as.matrix(Seurat::Embeddings(data.seurat, reduction = name)),
+    simplify = FALSE
+  )
+  names(obsm) <- paste0("X_", tolower(names(data.seurat@reductions))) # More compatible with usual format
+}
+```
+
+# Create h5ad file
+
+```{r}
+# AnnData object creation using reticulate
+anndata <- reticulate::import("anndata", convert = FALSE)
+adata <- anndata$AnnData(X = Matrix::t(X), raw = list(X = Matrix::t(raw.X)), obs = obs, var = var, obsm = obsm)
+```
+
+# Write object to file
+
+```{r}
+adata$write(h5ad_output, compression = "gzip")
+```
