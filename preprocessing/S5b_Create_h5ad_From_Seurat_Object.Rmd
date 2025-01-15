@@ -90,11 +90,6 @@ obs <- data.seurat@meta.data
 ```{r}
 # Raw count matrix
 raw.X <- GetAssayData(object = data.seurat, assay = "RNA", slot = "counts")
-
-# Transform to dgRMatrix (not required, but more standard)
-if("dgCMatrix" %in% class(raw.X)){
-  raw.X <- MatrixExtra::as.csr.matrix(raw.X)
-}
 ```
 
 # Prepare Gene metadata to put in h5ad
@@ -112,11 +107,6 @@ var
 ```{r}
 # Normalized count matrix
 X <- GetAssayData(object = data.seurat, assay = "RNA", slot = "data")
-
-# Transform to dgRMatrix (not required, but more standard)
-if("dgCMatrix" %in% class(X)){
-  X <- MatrixExtra::as.csr.matrix(X)
-}
 ```
 
 # Fix row names
@@ -145,8 +135,19 @@ if (length(reductions) > 0) {
 
 ```{r}
 # AnnData object creation using reticulate
-anndata <- reticulate::import("anndata", convert = FALSE)
-adata <- anndata$AnnData(X = Matrix::t(X), raw = list(X = Matrix::t(raw.X)), obs = obs, var = var, obsm = obsm)
+anndata <- reticulate::import("anndata")
+#adata <- anndata$AnnData(X = Matrix::t(X), raw = list(X = Matrix::t(raw.X)), obs = obs, var = var, obsm = obsm)
+adata <- anndata$AnnData(X = Matrix::t(X), raw = Matrix::t(raw.X), obs = obs, var = var, obsm = obsm)
+
+# Convert to pandas using reticulate if needed
+pandas <- reticulate::import("pandas")
+adata$raw$var <- pandas$DataFrame(adata$raw$var)
+adata$raw$var <- adata$raw$var$reset_index(drop = TRUE)
+
+# Check the result
+adata$raw$var
+
+
 ```
 
 # Write object to file
