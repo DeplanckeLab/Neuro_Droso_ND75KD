@@ -22,13 +22,22 @@ suppressPackageStartupMessages(library(Seurat, lib.loc = "/software/Seuratv4/lib
 suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/software/Seuratv4/lib/")) # For compatibility purpose
 suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
 suppressPackageStartupMessages(library(reticulate)) # For writing DE gene file
+suppressPackageStartupMessages(library(Matrix)) # For writing DE gene file
+suppressPackageStartupMessages(library(MatrixExtra)) # For writing DE gene file
 suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
+
+# Pick Python version for reticulate
+reticulate::use_python("/usr/bin/python3.12", required = TRUE)
 
 cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
 cat(bold("SeuratObject"), "version", as.character(packageVersion("SeuratObject")), "\n")
 cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
 cat(bold("reticulate"), "version", as.character(packageVersion("reticulate")), "\n")
 cat(bold("Matrix"), "version", as.character(packageVersion("Matrix")), "\n")
+cat(bold("MatrixExtra"), "version", as.character(packageVersion("MatrixExtra")), "\n")
+
+cat(bold("\nReticulate Python version used:\n"))
+py_config()
 ```
 
 ## Parameters
@@ -81,8 +90,11 @@ obs <- data.seurat@meta.data
 ```{r}
 # Raw count matrix
 raw.X <- GetAssayData(object = data.seurat, assay = "RNA", slot = "counts")
-colnames(raw.X) <- NULL
-rownames(raw.X) <- NULL
+
+# Transform to dgRMatrix (not required, but more standard)
+if("dgCMatrix" %in% class(raw.X)){
+  raw.X <- MatrixExtra::as.csr.matrix(raw.X)
+}
 ```
 
 # Prepare Gene metadata to put in h5ad
@@ -100,11 +112,17 @@ var
 ```{r}
 # Normalized count matrix
 X <- GetAssayData(object = data.seurat, assay = "RNA", slot = "data")
+
+# Transform to dgRMatrix (not required, but more standard)
+if("dgCMatrix" %in% class(X)){
+  X <- MatrixExtra::as.csr.matrix(X)
+}
 ```
 
 # Fix row names
 ```{r}
 rownames(X) <- var[rownames(X), "Accession"]
+rownames(raw.X) <- var[rownames(raw.X), "Accession"]
 rownames(var) <- var$Accession
 ```
 
