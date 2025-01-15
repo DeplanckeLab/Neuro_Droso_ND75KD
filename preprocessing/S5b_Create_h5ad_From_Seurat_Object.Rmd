@@ -135,19 +135,9 @@ if (length(reductions) > 0) {
 
 ```{r}
 # AnnData object creation using reticulate
-anndata <- reticulate::import("anndata")
+ad <- reticulate::import("anndata")
 #adata <- anndata$AnnData(X = Matrix::t(X), raw = list(X = Matrix::t(raw.X)), obs = obs, var = var, obsm = obsm)
-adata <- anndata$AnnData(X = Matrix::t(X), raw = Matrix::t(raw.X), obs = obs, var = var, obsm = obsm)
-
-# Convert to pandas using reticulate if needed
-pandas <- reticulate::import("pandas")
-adata$raw$var <- pandas$DataFrame(adata$raw$var)
-adata$raw$var <- adata$raw$var$reset_index(drop = TRUE)
-
-# Check the result
-adata$raw$var
-
-
+adata <- ad$AnnData(X = Matrix::t(X), raw = list(X = Matrix::t(raw.X), var = var), obs = obs, var = var, obsm = obsm)
 ```
 
 # Write object to file
