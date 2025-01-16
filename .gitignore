@@ -1,2 +1,5 @@
-./data/*.rds
-./data/*.h5
+data/*.rds
+data/*.h5
+data/*.loom
+data/*.rds
+preprocessing/*.html        
