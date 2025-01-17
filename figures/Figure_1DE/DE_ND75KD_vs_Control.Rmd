@@ -50,7 +50,7 @@ set.seed(42)
 
 ```{r}
 input_seurat_object <- "./data/Pan_neuro_integrated_FINAL.rds"
-output_figure_prefix <- "./figures/Figure_1D/Barplot_DE_ND75KD_Control_all_annotations"
+output_figure_prefix <- "./figures/Figure_1DE/Barplot_DE_ND75KD_Control_all_annotations"
 ```
 
 ## I. Reading Seurat object
@@ -65,26 +65,103 @@ message(nrow(data.seurat), " genes were loaded")
 ```
 
 ```{r}
+# Run DE between control and ND75KD, for each annotation
 list.annotations <- sort(unique(data.seurat$annotation))
 list.annotations <- list.annotations[list.annotations != "unannotated"]
+data.seurat <- SetIdent(data.seurat, value = "annotation")
+all.de.genes <- data.frame()
 for(annotation in list.annotations){
-  data.seurat.tmp <- data.seurat[,data.seurat$annotation == annotation]
-  data.seurat.tmp <- SetIdent(data.seurat.tmp, value = "orig.ident")
-  markers <- FindMarkers(data.seurat.tmp, ident.1 = "Pan_neuro_ND75KD", ident.2 = "Pan_neuro_control")
+  markers <- FindMarkers(data.seurat, ident.1 = "Pan_neuro_ND75KD", ident.2 = "Pan_neuro_control", test.use = "wilcox", group.by = "orig.ident", subset.ident = annotation)
   markers <- markers[abs(markers$avg_log2FC) > 1 & markers$p_val_adj <= 0.05,]
+  if(nrow(markers > 0)){
+    markers$gene <- rownames(markers)
+    markers$annotation <- annotation
+    rownames(markers) <- NULL
+    all.de.genes <- rbind(all.de.genes, markers)
+  }
 }
+sort(table(all.de.genes$annotation))
+sort(table(all.de.genes$gene))
+```
 
-monocyte.de.markers <- 
+## Plot that
 
+```{r, fig.width = 7, fig.height=6}
+# Create a table of DE genes by annotation
+nGenesByAnnotation <- table(all.de.genes$annotation)
 
+# Convert the table to a data frame
+df.nGenesByAnnotation <- as.data.frame(nGenesByAnnotation)
+colnames(df.nGenesByAnnotation) <- c("annotation", "Freq")
+
+# Reorder factor levels by Freq (descending), so the bar plot is sorted
+df.nGenesByAnnotation$annotation <- factor(
+  df.nGenesByAnnotation$annotation,
+  levels = df.nGenesByAnnotation$annotation[order(df.nGenesByAnnotation$Freq, decreasing = TRUE)]
+)
+
+# Plot the number of DE genes by annotation as a bar plot
+p <- ggplot(df.nGenesByAnnotation, aes(x = annotation, y = Freq, fill = annotation)) +
+  geom_bar(stat = "identity") +
+  ylab("#DEGs control vs. ND-75 KD") +
+  labs(x = NULL) +
+  theme_minimal() +
+  scale_y_continuous(breaks = 0:12, limits = c(0, 12)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        panel.grid.major.x = element_blank(), # Remove major vertical grid lines
+        panel.grid.minor.x = element_blank(), # Remove minor vertical grid lines
+        panel.grid.minor.y = element_blank()) + # Remove minor horizontal grid lines
+  scale_fill_manual(values = celltypePalette) +
+  NoLegend()
+
+p
 ```
 
 ```{r, fig.height = 12, fig.width = 12}
-ggsave(p, filename = paste0(output_figure_prefix, ".pdf"), width = 12, height = 12, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, ".png"), width = 12, height = 12, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, ".pdf"), width = 7, height = 6, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, ".png"), width = 7, height = 6, dpi = 1000, bg = 'white')
 ```
 
-```{r, fig.height = 12, fig.width = 12}
-p <- DimPlot(data.seurat, reduction = "umap_harmony", label = FALSE, pt.size = 0.5, group.by = "orig.ident", repel = F, cols = tissuePalette)
-ggsave(p, filename = paste0(output_figure_prefix, "_legend.pdf"), width = 12, height = 12, bg = "white")
+## Plot the most occurring genes
+
+```{r, fig.width = 7, fig.height=6}
+# Create a table of DE genes by annotation
+nGenesByAnnotation <- table(all.de.genes$gene)
+
+# Convert the table to a data frame
+df.nGenesByAnnotation <- as.data.frame(nGenesByAnnotation)
+colnames(df.nGenesByAnnotation) <- c("gene", "Freq")
+
+# Reorder factor levels by Freq (descending), so the bar plot is sorted
+df.nGenesByAnnotation$gene <- factor(
+  df.nGenesByAnnotation$gene,
+  levels = df.nGenesByAnnotation$gene[order(df.nGenesByAnnotation$Freq, decreasing = TRUE)]
+)
+
+# Plot the number of DE genes by annotation as a bar plot
+p <- ggplot(df.nGenesByAnnotation, aes(x = gene, y = Freq)) +
+  geom_bar(stat = "identity") +
+  ylab("#Occurrences DEGs control vs. ND-75 KD") +
+  theme_minimal() +
+  labs(x = NULL) +
+  #scale_y_continuous(breaks = 0:30, limits = c(0, 30)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        panel.grid.major.x = element_blank(), # Remove major vertical grid lines
+        panel.grid.minor.x = element_blank(), # Remove minor vertical grid lines
+        panel.grid.minor.y = element_blank()) # Remove minor horizontal grid lines
+
+p
 ```
+
+```{r, fig.height = 8, fig.width = 6}
+ggsave(p, filename = paste0(output_figure_prefix, "_gene.pdf"), width = 7, height = 6, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_gene.png"), width = 7, height = 6, dpi = 1000, bg = 'white')
+```
+
+```{r}
+# Same but overall
+markers <- FindMarkers(data.seurat, ident.1 = "Pan_neuro_ND75KD", ident.2 = "Pan_neuro_control", group.by = "orig.ident")
+markers <- markers[abs(markers$avg_log2FC) > 1 & markers$p_val_adj <= 0.05,]
+markers
+```
+
