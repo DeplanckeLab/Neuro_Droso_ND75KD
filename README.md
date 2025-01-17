@@ -2,7 +2,7 @@
 Material and source code for the Neuro_Droso_ND75-KD manuscript
 
 ## 0. Raw sequencing data
-All .fastq files were deposited on ArrayExpress under the accession number [E-MTAB-XXXXX](https://www.ebi.ac.uk/biostudies/arrayexpress/studies/E-MTAB-XXXXX). It comprises two 10x libraries (Pan_neuro_control and Pan_neuro_ND75KD).<br/>
+All .fastq files were deposited on ArrayExpress under the accession number [E-MTAB-14766](https://www.ebi.ac.uk/biostudies/arrayexpress/studies/E-MTAB-14766). It comprises two 10x libraries (Pan_neuro_control and Pan_neuro_ND75KD).<br/>
 
 ### 0.1 Running CellRanger on the 10x single-nuclei libraries
 Here we follow standard protocols. 
@@ -64,7 +64,7 @@ We do this after all metadata were generated, in step 1.4.
 ### 1.4 Adding all metadata to the final Seurat object <sub>(see full code here: [[Rmd](preprocessing/S4_Pan_neuro_integrated_add_metadata.Rmd)])</sub>
 In this step we add the metadata generated in steps 1.2.a, 1.2.b, and 1.3 to the final Seurat object.
 
-This step finishes the preprocessing of the Seurat object, and generates a .rds file (also available to download on ArrayExpress). Next, we use this [S5_Create_Loom_From_Seurat_Object.Rmd](preprocessing/S5_Create_Loom_From_Seurat_Object.Rmd) R script to transform the Seurat object into a Loom file, and upload it to our ASAP interactive portal [asap.epfl.ch](https://asap.epfl.ch). From this portal, you can visualize the datasets and download it as h5ad or LOOM file.
+This step finishes the preprocessing of the Seurat object, and generates a .rds file (also available to download on ArrayExpress). Next, we use these 2 R scripts: [S5a_Create_Loom_From_Seurat_Object.Rmd](preprocessing/S5a_Create_Loom_From_Seurat_Object.Rmd) and [S5b_Create_h5ad_From_Seurat_Object.Rmd](preprocessing/S5b_Create_h5ad_From_Seurat_Object.Rmd) to transform the Seurat object into Loom and h5ad files, and, for example, upload it to our ASAP interactive portal [asap.epfl.ch](https://asap.epfl.ch). From this portal, you can visualize the datasets and download it as h5ad or LOOM file.
 
 [ASAP final link to be provided once published]
 
