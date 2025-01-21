@@ -20,10 +20,10 @@ knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
 First, I'm loading the required libraries & functions
 
 ```{r}
-#suppressPackageStartupMessages(library(Seurat, lib.loc = "/software/Seuratv4/lib/")) # Seurat v4.4.0, library for single-cell analysis
-#suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/software/Seuratv4/lib/")) # For compatibility purpose
-suppressPackageStartupMessages(library(Seurat)) # Seurat v5
-suppressPackageStartupMessages(library(SeuratObject)) # Seurat v5
+suppressPackageStartupMessages(library(Seurat, lib.loc = "/software/Seuratv4/lib/")) # Seurat v4.4.0, library for single-cell analysis
+suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/software/Seuratv4/lib/")) # For compatibility purpose
+#suppressPackageStartupMessages(library(Seurat)) # Seurat v5
+#suppressPackageStartupMessages(library(SeuratObject)) # Seurat v5
 suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
 suppressPackageStartupMessages(library(ggplot2)) # For plotting
 suppressPackageStartupMessages(library(ggpubr)) # For grid plotting
@@ -91,7 +91,7 @@ sort(table(all.de.genes$gene))
 
 ## Save as table
 ```{r}
-fwrite(all.de.genes, file = paste0(output_file_prefix, "_FC1.4_Seuratv5.tsv"), quote = F, row.names = F, col.names = T, sep = "\t")
+fwrite(all.de.genes, file = paste0(output_file_prefix, "_FC1.4.tsv"), quote = F, row.names = F, col.names = T, sep = "\t")
 ```
 
 ## Plot that
@@ -127,8 +127,8 @@ p
 ```
 
 ```{r, fig.height = 12, fig.width = 12}
-ggsave(p, filename = paste0(output_figure_prefix, "_FC1.4_Seuratv5.pdf"), width = 7, height = 6, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "_FC1.4_Seuratv5.png"), width = 7, height = 6, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "_FC1.4.pdf"), width = 7, height = 6, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_FC1.4.png"), width = 7, height = 6, dpi = 1000, bg = 'white')
 ```
 
 ## Plot the most occurring genes
@@ -163,8 +163,8 @@ p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "_gene_FC1.4_Seuratv5.pdf"), width = 25, height = 6, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "_gene_FC1.4_Seuratv5.png"), width = 25, height = 6, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "_gene_FC1.4.pdf"), width = 25, height = 6, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_gene_FC1.4.png"), width = 25, height = 6, dpi = 1000, bg = 'white')
 ```
 
 ```{r}
@@ -176,7 +176,7 @@ markers
 
 ## Save as table
 ```{r}
-fwrite(markers, file = paste0(output_file_prefix, "_overall_FC1.4_Seuratv5.tsv"), quote = F, row.names = T, col.names = T, sep = "\t")
+fwrite(markers, file = paste0(output_file_prefix, "_overall_FC1.4.tsv"), quote = F, row.names = T, col.names = T, sep = "\t")
 ```
 
 ## Prepare a heatmap of ND-75 KD
@@ -231,6 +231,6 @@ p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "_heatmap-ND75_FC1.4_Seuratv5.pdf"), width = 25, height = 6, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "_heatmap-ND75_FC1.4_Seuratv5.png"), width = 25, height = 6, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "_heatmap-ND75_FC1.4.pdf"), width = 25, height = 6, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_heatmap-ND75_FC1.4.png"), width = 25, height = 6, dpi = 1000, bg = 'white')
 ```
