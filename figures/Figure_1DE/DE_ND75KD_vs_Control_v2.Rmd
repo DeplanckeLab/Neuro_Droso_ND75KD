@@ -234,3 +234,63 @@ p
 ggsave(p, filename = paste0(output_figure_prefix, "_heatmap-ND75_FC1.4.pdf"), width = 25, height = 6, bg = "white")
 ggsave(p, filename = paste0(output_figure_prefix, "_heatmap-ND75_FC1.4.png"), width = 25, height = 6, dpi = 1000, bg = 'white')
 ```
+
+# Difference between Serotonergic and Dopaminergic neurons
+
+```{r}
+list.annotations <- c("dopaminergic neuron", "serotonergic neuron")
+data.seurat <- SetIdent(data.seurat, value = "annotation")
+all.de.genes <- data.frame()
+for(annotation in list.annotations){
+  markers <- FindMarkers(data.seurat, ident.1 = "Pan_neuro_ND75KD", ident.2 = "Pan_neuro_control", test.use = "wilcox", group.by = "orig.ident", subset.ident = annotation)
+  markers$gene <- rownames(markers)
+  markers$annotation <- annotation
+  rownames(markers) <- NULL
+  all.de.genes <- rbind(all.de.genes, markers)
+}
+```
+
+```{r}
+union.de.genes <- unique(all.de.genes$gene[abs(all.de.genes$avg_log2FC) >= 0.5 & all.de.genes$p_val_adj <= 0.05])
+union.de.genes
+```
+
+```{r}
+heatmap_data <- data.seurat@assays$RNA@data[union.de.genes, data.seurat$annotation %in% list.annotations]
+pheatmap(heatmap_data, cluster_rows = T, cluster_cols = T, display_numbers = F, scale = "row", clustering_method = "ward.D2", silent = F, show_colnames = F, annotation_col = data.seurat@meta.data[colnames(heatmap_data),c("annotation","orig.ident"), drop = F])
+```
+
+```{r}
+heatmap_data <- data.seurat@assays$RNA@data[union.de.genes, data.seurat$annotation %in% "dopaminergic neuron"]
+pheatmap(heatmap_data, cluster_rows = T, cluster_cols = T, display_numbers = F, scale = "row", clustering_method = "ward.D2", silent = F, show_colnames = F, annotation_col = data.seurat@meta.data[colnames(heatmap_data),c("annotation","orig.ident"), drop = F])
+```
+
+```{r}
+heatmap_data <- data.seurat@assays$RNA@data[union.de.genes, data.seurat$annotation %in% "serotonergic neuron"]
+pheatmap(heatmap_data, cluster_rows = T, cluster_cols = T, display_numbers = F, scale = "row", clustering_distance_cols = "correlation", clustering_method = "ward.D2", silent = F, show_colnames = F, annotation_col = data.seurat@meta.data[colnames(heatmap_data),c("annotation","orig.ident"), drop = F])
+```
+
+```{r}
+union.de.genes <- c(union.de.genes, "ND-75")
+boxplot_data <- data.frame()
+for(gene in union.de.genes){
+  exp <- data.seurat@assays$RNA@data[gene, data.seurat$annotation %in% list.annotations]
+  boxplot_data <- rbind(boxplot_data, data.frame(gene = gene, expression = exp, annotation = data.seurat$annotation[names(exp)], condition = data.seurat$orig.ident[names(exp)]))
+}
+boxplot_data
+```
+
+```{r, fig.width=15,fig.height=5}
+
+ggplot(boxplot_data, aes(x = gene, y = expression, fill = condition)) +
+  geom_boxplot() +
+  labs(
+    title = "Gene Expression by Annotation and Condition",
+    x = "Gene",
+    y = "Expression"
+  ) +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = tissuePalette) + 
+  facet_wrap(~ annotation) # Facet by condition
+```
+
