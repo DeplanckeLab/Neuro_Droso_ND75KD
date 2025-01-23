@@ -294,3 +294,40 @@ ggplot(boxplot_data, aes(x = gene, y = expression, fill = condition)) +
   facet_wrap(~ annotation) # Facet by condition
 ```
 
+# pseudobulk the counts based on donor-condition-celltype
+```{r}
+data.seurat.pseudo_bulk <- AggregateExpression(data.seurat, assays = "RNA", return.seurat = T, group.by = c("orig.ident", "annotation"))
+
+# Note does not work if we cannot aggregate by donor/library or anything to make multiple reps
+data.seurat.pseudo_bulk$celltype.condition <- colnames(data.seurat.pseudo_bulk)
+#bulk.de_genes <- FindMarkers(object = data.seurat.pseudo_bulk, ident.1 = "Pan_neuro_control_serotonergic neuron", ident.2 = "Pan_neuro_ND75KD_serotonergic neuron", test.use = "DESeq2", group.by = "celltype.condition")
+#head(bulk.de_genes, n = 15)
+
+fold.change.bulk <- function(gene, annotation){
+  log2fc <- data.seurat.pseudo_bulk@assays$RNA@data[gene, paste0("Pan_neuro_ND75KD_", annotation)] - data.seurat.pseudo_bulk@assays$RNA@data[gene, paste0("Pan_neuro_control_", annotation)]
+  message(paste0(annotation, ": ",gene," : "," CTRL vs KD FC = ", round(sign(log2fc) * 2^(abs(log2fc)), 2)))
+}
+
+fold.change.bulk("Ldh", "serotonergic neuron")
+fold.change.bulk("MFS14", "serotonergic neuron")
+fold.change.bulk("h", "serotonergic neuron")
+fold.change.bulk("Obp99b", "serotonergic neuron")
+fold.change.bulk("Dgp-1", "serotonergic neuron")
+fold.change.bulk("Dro", "serotonergic neuron")
+fold.change.bulk("Marf1", "serotonergic neuron")
+fold.change.bulk("RR48373-transposable-element", "serotonergic neuron")
+fold.change.bulk("CG42326", "serotonergic neuron")
+fold.change.bulk("Lk6", "serotonergic neuron")
+
+fold.change.bulk("Ldh", "dopaminergic neuron")
+fold.change.bulk("Dro", "dopaminergic neuron")
+fold.change.bulk("y", "dopaminergic neuron")
+fold.change.bulk("CG33978", "dopaminergic neuron")
+fold.change.bulk("Arc1", "dopaminergic neuron")
+
+fold.change.bulk("Obp99b", "dopaminergic neuron")
+
+fold.change.bulk("ND-75", "serotonergic neuron")
+fold.change.bulk("ND-75", "dopaminergic neuron")
+
+```
