@@ -21,7 +21,7 @@ First, I'm loading the required libraries & functions
 suppressPackageStartupMessages(library(Seurat, lib.loc = "/software/Seuratv4/lib/")) # Seurat v4.4.0, library for single-cell analysis
 suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/software/Seuratv4/lib/")) # For compatibility purpose
 suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
-suppressPackageStartupMessages(library(reticulate)) # For writing DE gene file
+suppressPackageStartupMessages(library(reticulate)) # For Python access
 suppressPackageStartupMessages(library(Matrix)) # For writing DE gene file
 suppressPackageStartupMessages(library(MatrixExtra)) # For writing DE gene file
 suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D

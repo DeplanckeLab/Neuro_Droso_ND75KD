@@ -3,7 +3,7 @@ title: "Emma Pan Neuro (Control + ND75KD)"
 description: "Figure - DE genes between ND75KD and Control, by annotation"
 author: "Vincent Gardeux"
 date: "2025/01/15"
-updated: "2025/01/16"
+updated: "2025/01/24"
 output:
   html_document:
     df_print: paged
@@ -22,10 +22,13 @@ First, I'm loading the required libraries & functions
 ```{r}
 suppressPackageStartupMessages(library(Seurat, lib.loc = "/software/Seuratv4/lib/")) # Seurat v4.4.0, library for single-cell analysis
 suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/software/Seuratv4/lib/")) # For compatibility purpose
+#suppressPackageStartupMessages(library(Seurat)) # Seurat v5
+#suppressPackageStartupMessages(library(SeuratObject)) # Seurat v5
 suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
 suppressPackageStartupMessages(library(ggplot2)) # For plotting
 suppressPackageStartupMessages(library(ggpubr)) # For grid plotting
 suppressPackageStartupMessages(library(plotly)) # For interactive plots
+suppressPackageStartupMessages(library(pheatmap)) # For nice heatmaps
 suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
 
 cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
@@ -33,6 +36,7 @@ cat(bold("SeuratObject"), "version", as.character(packageVersion("SeuratObject")
 cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
 cat(bold("ggplot2"), "version", as.character(packageVersion("ggplot2")), "\n")
 cat(bold("ggpubr"), "version", as.character(packageVersion("ggpubr")), "\n")
+cat(bold("pheatmap"), "version", as.character(packageVersion("pheatmap")), "\n")
 cat(bold("plotly"), "version", as.character(packageVersion("plotly")), "\n")
 
 # Color-blind friendly palette 3-colors
@@ -73,7 +77,7 @@ data.seurat <- SetIdent(data.seurat, value = "annotation")
 all.de.genes <- data.frame()
 for(annotation in list.annotations){
   markers <- FindMarkers(data.seurat, ident.1 = "Pan_neuro_ND75KD", ident.2 = "Pan_neuro_control", test.use = "wilcox", group.by = "orig.ident", subset.ident = annotation)
-  markers <- markers[abs(markers$avg_log2FC) > 1 & markers$p_val_adj <= 0.05,]
+  markers <- markers[abs(markers$avg_log2FC) > 0.5 & markers$p_val_adj <= 0.05,]
   if(nrow(markers > 0)){
     markers$gene <- rownames(markers)
     markers$annotation <- annotation
@@ -112,7 +116,6 @@ p <- ggplot(df.nGenesByAnnotation, aes(x = annotation, y = Freq, fill = annotati
   ylab("#DEGs control vs. ND-75 KD") +
   labs(x = NULL) +
   theme_minimal() +
-  scale_y_continuous(breaks = 0:12, limits = c(0, 12)) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
         panel.grid.major.x = element_blank(), # Remove major vertical grid lines
         panel.grid.minor.x = element_blank(), # Remove minor vertical grid lines
@@ -130,7 +133,7 @@ ggsave(p, filename = paste0(output_figure_prefix, ".png"), width = 7, height = 6
 
 ## Plot the most occurring genes
 
-```{r, fig.width = 7, fig.height=6}
+```{r, fig.width = 30, fig.height=6}
 # Create a table of DE genes by annotation
 nGenesByAnnotation <- table(all.de.genes$gene)
 
@@ -159,19 +162,179 @@ p <- ggplot(df.nGenesByAnnotation, aes(x = gene, y = Freq)) +
 p
 ```
 
-```{r, fig.height = 8, fig.width = 6}
-ggsave(p, filename = paste0(output_figure_prefix, "_gene.pdf"), width = 7, height = 6, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "_gene.png"), width = 7, height = 6, dpi = 1000, bg = 'white')
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "_gene.pdf"), width = 25, height = 6, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_gene.png"), width = 25, height = 6, dpi = 1000, bg = 'white')
 ```
 
 ```{r}
 # Same but overall
 markers <- FindMarkers(data.seurat, ident.1 = "Pan_neuro_ND75KD", ident.2 = "Pan_neuro_control", group.by = "orig.ident")
-markers <- markers[abs(markers$avg_log2FC) > 1 & markers$p_val_adj <= 0.05,]
+markers <- markers[abs(markers$avg_log2FC) > 0.5 & markers$p_val_adj <= 0.05,]
 markers
 ```
 
 ## Save as table
 ```{r}
 fwrite(markers, file = paste0(output_file_prefix, "_overall.tsv"), quote = F, row.names = T, col.names = T, sep = "\t")
+```
+
+## Prepare a heatmap of ND-75 KD
+```{r}
+# Run DE between control and ND75KD, for each annotation
+list.annotations <- sort(unique(data.seurat$annotation))
+list.annotations <- list.annotations[list.annotations != "unannotated"]
+data.seurat <- SetIdent(data.seurat, value = "annotation")
+nd75results <- data.frame()
+for(annotation in list.annotations){
+  markers <- FindMarkers(data.seurat, ident.1 = "Pan_neuro_ND75KD", ident.2 = "Pan_neuro_control", test.use = "wilcox", group.by = "orig.ident", subset.ident = annotation)
+  if("ND-75" %in% rownames(markers)){
+    markers <- markers["ND-75",]
+    markers$gene <- rownames(markers)
+    markers$annotation <- annotation
+    rownames(markers) <- NULL
+    markers$avg_count.ND75KD <- mean(data.seurat@assays$RNA@counts["ND-75", data.seurat$orig.ident == "Pan_neuro_ND75KD" & data.seurat$annotation == annotation])
+    markers$avg_count.control <- mean(data.seurat@assays$RNA@counts["ND-75", data.seurat$orig.ident == "Pan_neuro_control" & data.seurat$annotation == annotation])
+    markers$avg_norm.ND75KD <- mean(data.seurat@assays$RNA@data["ND-75", data.seurat$orig.ident == "Pan_neuro_ND75KD" & data.seurat$annotation == annotation])
+    markers$avg_norm.control <- mean(data.seurat@assays$RNA@data["ND-75", data.seurat$orig.ident == "Pan_neuro_control" & data.seurat$annotation == annotation])
+    #markers$pct.ND75KD <- sum(data.seurat@assays$RNA@data["ND-75", data.seurat$orig.ident == "Pan_neuro_ND75KD" & data.seurat$annotation == annotation] > 0) / length(data.seurat@assays$RNA@data["ND-75", data.seurat$orig.ident == "Pan_neuro_ND75KD" & data.seurat$annotation == annotation])
+    #markers$pct.control <- sum(data.seurat@assays$RNA@data["ND-75", data.seurat$orig.ident == "Pan_neuro_control" & data.seurat$annotation == annotation] > 0) / length(data.seurat@assays$RNA@data["ND-75", data.seurat$orig.ident == "Pan_neuro_control" & data.seurat$annotation == annotation])
+    nd75results <- rbind(nd75results, markers)
+  }
+}
+```
+
+```{r}
+# Ensure numeric columns are used for heatmap
+heatmap_data <- nd75results[, c("avg_log2FC", "p_val", "pct.1", "pct.2",  "p_val_adj", "avg_count.control", "avg_count.ND75KD", "avg_norm.control", "avg_norm.ND75KD")]
+rownames(heatmap_data) <- nd75results$annotation  # Set rownames to annotations
+#heatmap_data$p_val <- -log10(heatmap_data$p_val)
+#heatmap_data$p_val_adj <- -log10(heatmap_data$p_val_adj)
+#colnames(heatmap_data)[colnames(heatmap_data) == "p_val"] <- "-log10(p_val)"
+#colnames(heatmap_data)[colnames(heatmap_data) == "p_val_adj"] <- "-log10(p_val_adj)"
+colnames(heatmap_data)[colnames(heatmap_data) == "pct.1"] <- "pct.ND75KD"
+colnames(heatmap_data)[colnames(heatmap_data) == "pct.2"] <- "pct.control"
+
+# Order
+heatmap_data <- heatmap_data[order(heatmap_data$p_val, decreasing = F),]
+
+p1 <- pheatmap(heatmap_data[,"avg_log2FC", drop = F], cluster_rows = F, cluster_cols = F, display_numbers = T, scale = "none", cellwidth = 40, cellheight = 20, silent = T)
+p2 <- pheatmap(heatmap_data[,c("p_val","p_val_adj"), drop = F], cluster_rows = F, cluster_cols = F, display_numbers = T, number_format = "%.1e", scale = "none", cellwidth = 40, cellheight = 20, silent = T)
+p3 <- pheatmap(heatmap_data[,c("pct.control","pct.ND75KD"), drop = F], cluster_rows = F, cluster_cols = F, display_numbers = T, scale = "none", cellwidth = 40, cellheight = 20, silent = T)
+p4 <- pheatmap(heatmap_data[,c("avg_count.control","avg_count.ND75KD", "avg_norm.control", "avg_norm.ND75KD"), drop = F], cluster_rows = F, cluster_cols = F, display_numbers = T, scale = "none", cellwidth = 40, cellheight = 20, silent = T)
+
+```
+
+```{r, fig.height=16, fig.width=22}
+p <- ggarrange(p1[[4]],p2[[4]],p3[[4]],p4[[4]], ncol = 4, nrow = 1)
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "_heatmap-ND75.pdf"), width = 25, height = 6, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_heatmap-ND75.png"), width = 25, height = 6, dpi = 1000, bg = 'white')
+```
+
+# Difference between Serotonergic and Dopaminergic neurons
+
+```{r}
+list.annotations <- c("dopaminergic neuron", "serotonergic neuron")
+data.seurat <- SetIdent(data.seurat, value = "annotation")
+all.de.genes <- data.frame()
+for(annotation in list.annotations){
+  markers <- FindMarkers(data.seurat, ident.1 = "Pan_neuro_ND75KD", ident.2 = "Pan_neuro_control", test.use = "wilcox", group.by = "orig.ident", subset.ident = annotation)
+  markers$gene <- rownames(markers)
+  markers$annotation <- annotation
+  rownames(markers) <- NULL
+  all.de.genes <- rbind(all.de.genes, markers)
+}
+```
+
+```{r}
+union.de.genes <- unique(all.de.genes$gene[abs(all.de.genes$avg_log2FC) >= 0.5 & all.de.genes$p_val_adj <= 0.05])
+union.de.genes
+```
+
+```{r}
+union.de.genes <- c(union.de.genes, "ND-75")
+boxplot_data <- data.frame()
+for(gene in union.de.genes){
+  exp <- data.seurat@assays$RNA@data[gene, data.seurat$annotation %in% list.annotations]
+  boxplot_data <- rbind(boxplot_data, data.frame(gene = gene, expression = exp, annotation = data.seurat$annotation[names(exp)], condition = data.seurat$orig.ident[names(exp)]))
+}
+boxplot_data
+```
+
+```{r, fig.width=15,fig.height=5}
+p <- ggplot(boxplot_data, aes(x = gene, y = expression, fill = condition)) +
+  geom_boxplot() +
+  labs(
+    title = "Gene Expression by Annotation and Condition",
+    x = "Gene",
+    y = "Expression"
+  ) +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = tissuePalette) + 
+  facet_wrap(~ annotation) # Facet by condition
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "_boxplot-ND75.pdf"), width = 15, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_boxplot-ND75.png"), width = 15, height = 5, dpi = 1000, bg = 'white')
+```
+
+# pseudobulk the counts based on donor-condition-celltype
+
+```{r}
+data.seurat.pseudo_bulk <- AggregateExpression(data.seurat, assays = "RNA", return.seurat = T, group.by = c("orig.ident", "annotation"), slot = c("counts"))
+
+# Note does not work if we cannot aggregate by donor/library or anything to make multiple reps
+data.seurat.pseudo_bulk$celltype.condition <- colnames(data.seurat.pseudo_bulk)
+#bulk.de_genes <- FindMarkers(object = data.seurat.pseudo_bulk, ident.1 = "Pan_neuro_control_serotonergic neuron", ident.2 = "Pan_neuro_ND75KD_serotonergic neuron", test.use = "DESeq2", group.by = "celltype.condition")
+#head(bulk.de_genes, n = 15)
+
+fold.change.bulk <- function(gene, annotation){
+  log2fc <- data.seurat.pseudo_bulk@assays$RNA@data[gene, paste0("Pan_neuro_ND75KD_", annotation)] - data.seurat.pseudo_bulk@assays$RNA@data[gene, paste0("Pan_neuro_control_", annotation)]
+  message(paste0(annotation, ": ",gene," : "," CTRL vs KD FC = ", round(sign(log2fc) * 2^(abs(log2fc)), 2)))
+}
+
+fold.change.bulk("Ldh", "serotonergic neuron")
+fold.change.bulk("MFS14", "serotonergic neuron")
+fold.change.bulk("h", "serotonergic neuron")
+fold.change.bulk("Obp99b", "serotonergic neuron")
+fold.change.bulk("Dgp-1", "serotonergic neuron")
+fold.change.bulk("Dro", "serotonergic neuron")
+fold.change.bulk("Marf1", "serotonergic neuron")
+fold.change.bulk("RR48373-transposable-element", "serotonergic neuron")
+fold.change.bulk("CG42326", "serotonergic neuron")
+fold.change.bulk("Lk6", "serotonergic neuron")
+
+fold.change.bulk("Ldh", "dopaminergic neuron")
+fold.change.bulk("Dro", "dopaminergic neuron")
+fold.change.bulk("y", "dopaminergic neuron")
+fold.change.bulk("CG33978", "dopaminergic neuron")
+fold.change.bulk("Arc1", "dopaminergic neuron")
+
+fold.change.bulk("Obp99b", "dopaminergic neuron")
+
+fold.change.bulk("ND-75", "serotonergic neuron")
+fold.change.bulk("ND-75", "dopaminergic neuron")
+```
+
+# What if I DE overall, taking annotations as reps ?
+
+```{r}
+data.seurat.pseudo_bulk$annotation <- data.seurat.pseudo_bulk$celltype.condition
+data.seurat.pseudo_bulk$annotation[startsWith(data.seurat.pseudo_bulk$annotation, "Pan_neuro_ND75KD")] <- "Pan_neuro_ND75KD"
+data.seurat.pseudo_bulk$annotation[startsWith(data.seurat.pseudo_bulk$annotation, "Pan_neuro_control")] <- "Pan_neuro_control"
+bulk.de_genes <- FindMarkers(object = data.seurat.pseudo_bulk, ident.1 = "Pan_neuro_ND75KD", ident.2 = "Pan_neuro_control", test.use = "DESeq2", group.by = "annotation")
+bulk.de_genes
+```
+
+## Save as table
+```{r}
+fwrite(bulk.de_genes, file = paste0(output_file_prefix, "_overall_bulk.tsv"), quote = F, row.names = T, col.names = T, sep = "\t")
+bulk.de_genes <- bulk.de_genes[!is.na(bulk.de_genes$p_val) & abs(bulk.de_genes$avg_log2FC) >= 1 & bulk.de_genes$p_val_adj <= 0.05, ]
+fwrite(bulk.de_genes, file = paste0(output_file_prefix, "_overall_bulk_filtered.tsv"), quote = F, row.names = T, col.names = T, sep = "\t")
 ```
