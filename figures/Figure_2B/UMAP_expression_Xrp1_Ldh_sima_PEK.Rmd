@@ -1,6 +1,6 @@
 ---
 title: "Emma Pan Neuro (Control + ND75KD)"
-description: "Figure 2H"
+description: "Figure 2B"
 author: "Vincent Gardeux"
 date: "2025/01/24"
 updated: "2025/01/24"
@@ -51,7 +51,7 @@ set.seed(42)
 
 ```{r}
 input_seurat_object <- "./data/Pan_neuro_integrated_FINAL.rds"
-output_figure_prefix <- "./figures/Figure_2H/UMAP_Regulon_Xrp1"
+output_figure_prefix <- "./figures/Figure_2B/UMAP_Expression"
 ```
 
 ## I. Reading Seurat object
@@ -71,9 +71,37 @@ p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, ".pdf"), width = 12, height = 12, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, ".png"), width = 12, height = 12, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "_Xrp1.pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_Xrp1.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
 ```
 
+```{r, fig.height = 12, fig.width = 12}
+p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "Ldh", order = T, slot = "data") + NoLegend()
+p
+```
 
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "_Ldh.pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_Ldh.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
+```
+
+```{r, fig.height = 12, fig.width = 12}
+p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "sima", order = T, slot = "data") + NoLegend()
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "_sima.pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_sima.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
+```
+
+```{r, fig.height = 12, fig.width = 12}
+p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "PEK", order = T, slot = "data") + NoLegend()
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "_PEK.pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_PEK.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
+```
 
