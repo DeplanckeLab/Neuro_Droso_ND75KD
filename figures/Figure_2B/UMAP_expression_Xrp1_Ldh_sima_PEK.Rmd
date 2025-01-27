@@ -105,3 +105,13 @@ ggsave(p, filename = paste0(output_figure_prefix, "_PEK.pdf"), width = 12, heigh
 ggsave(p, filename = paste0(output_figure_prefix, "_PEK.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
 ```
 
+```{r, fig.height = 12, fig.width = 12}
+p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "crc", order = T, slot = "data") + NoLegend()
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "_crc.pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_crc.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
+```
+

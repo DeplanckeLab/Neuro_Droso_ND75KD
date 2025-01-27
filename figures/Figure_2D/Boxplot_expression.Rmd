@@ -232,3 +232,34 @@ ggsave(p, filename = paste0(output_figure_prefix, "_ordered_boxplot_",gene,".png
 
 p
 ```
+
+```{r, fig.width=17,fig.height=5}
+# Parameters
+gene <- "crc"
+
+# Prepare
+boxplot_data <- data.frame(expression = data.seurat@assays$RNA@data[gene, ], annotation = data.seurat$annotation_clusters)
+
+# Calculate summary expression per annotation (cluster)
+summary_expression <- tapply(boxplot_data$expression, boxplot_data$annotation, mean)
+
+# Sort annotations by mean expression
+sorted_annotations <- names(sort(summary_expression, decreasing = TRUE))
+
+# Reorder the annotation factor
+boxplot_data$annotation <- factor(boxplot_data$annotation, levels = sorted_annotations)
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = annotation, y = expression, fill = annotation)) +
+  geom_boxplot() +
+  labs(x = NULL, y = paste0(gene, " normalized expression")) +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = annotatedClusterPalette) +
+  NoLegend()
+
+# Save
+ggsave(p, filename = paste0(output_figure_prefix, "_ordered_boxplot_",gene,".pdf"), width = 15, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_ordered_boxplot_",gene,".png"), width = 15, height = 5, dpi = 1000, bg = 'white')
+
+p
+```

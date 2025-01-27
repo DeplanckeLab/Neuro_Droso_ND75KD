@@ -174,3 +174,25 @@ ggsave(p, filename = paste0(output_figure_prefix, "_boxplot_",gene,".png"), widt
 
 p
 ```
+
+```{r, fig.width=15,fig.height=5}
+# Parameters
+gene <- "crc"
+
+# Prepare
+boxplot_data <- data.frame(expression = data.seurat@assays$RNA@data[gene, ], annotation = data.seurat$annotation, condition = data.seurat$orig.ident)
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = annotation, y = expression, fill = condition)) +
+  geom_boxplot() +
+  labs(x = NULL, y = paste0(gene, " normalized expression")) +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_manual(values = tissuePalette)
+
+# Save
+ggsave(p, filename = paste0(output_figure_prefix, "_boxplot_",gene,".pdf"), width = 15, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_boxplot_",gene,".png"), width = 15, height = 5, dpi = 1000, bg = 'white')
+
+p
+```
+
