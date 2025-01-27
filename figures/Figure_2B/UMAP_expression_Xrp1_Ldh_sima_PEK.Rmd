@@ -66,8 +66,7 @@ message(nrow(data.seurat), " genes were loaded")
 ```
 
 ```{r, fig.height = 12, fig.width = 12}
-p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "SCENIC_Xrp1_activating_regulon", order = T) + 
-  scale_colour_gradientn(colors = c("#f2f2f2", "#e6e6e6", "#cd1c18"), values = scales::rescale(c(0, 0.1, max(data.seurat@meta.data$SCENIC_crc_activating_regulon, na.rm = TRUE)))) + NoLegend()
+p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "Xrp1", order = T, slot = "data") + NoLegend()
 p
 ```
 
