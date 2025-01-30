@@ -66,7 +66,7 @@ message(nrow(data.seurat), " genes were loaded")
 ```
 
 ```{r, fig.height = 12, fig.width = 12}
-p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "Xrp1", order = T, slot = "data") + NoLegend()
+p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "Xrp1", order = T, slot = "data")
 p
 ```
 
@@ -76,7 +76,7 @@ ggsave(p, filename = paste0(output_figure_prefix, "_Xrp1.png"), width = 12, heig
 ```
 
 ```{r, fig.height = 12, fig.width = 12}
-p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "Ldh", order = T, slot = "data") + NoLegend()
+p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "Ldh", order = T, slot = "data")
 p
 ```
 
@@ -86,7 +86,7 @@ ggsave(p, filename = paste0(output_figure_prefix, "_Ldh.png"), width = 12, heigh
 ```
 
 ```{r, fig.height = 12, fig.width = 12}
-p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "sima", order = T, slot = "data") + NoLegend()
+p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "sima", order = T, slot = "data")
 p
 ```
 
@@ -96,7 +96,7 @@ ggsave(p, filename = paste0(output_figure_prefix, "_sima.png"), width = 12, heig
 ```
 
 ```{r, fig.height = 12, fig.width = 12}
-p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "PEK", order = T, slot = "data") + NoLegend()
+p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "PEK", order = T, slot = "data")
 p
 ```
 
@@ -106,7 +106,7 @@ ggsave(p, filename = paste0(output_figure_prefix, "_PEK.png"), width = 12, heigh
 ```
 
 ```{r, fig.height = 12, fig.width = 12}
-p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "crc", order = T, slot = "data") + NoLegend()
+p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "crc", order = T, slot = "data")
 p
 ```
 
