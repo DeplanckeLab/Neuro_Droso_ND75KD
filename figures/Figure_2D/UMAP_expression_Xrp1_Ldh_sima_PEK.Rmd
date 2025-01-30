@@ -65,53 +65,53 @@ message(ncol(data.seurat), " cells were loaded")
 message(nrow(data.seurat), " genes were loaded")
 ```
 
-```{r, fig.height = 5, fig.width = 5}
+```{r, fig.height = 12, fig.width = 12}
 p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "Xrp1", order = T, slot = "data") + NoLegend()
 p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "_Xrp1.pdf"), width = 5, height = 5, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "_Xrp1.png"), width = 5, height = 5, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "_Xrp1.pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_Xrp1.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
 ```
 
-```{r, fig.height = 5, fig.width = 5}
+```{r, fig.height = 12, fig.width = 12}
 p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "Ldh", order = T, slot = "data") + NoLegend()
 p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "_Ldh.pdf"), width = 5, height = 5, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "_Ldh.png"), width = 5, height = 5, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "_Ldh.pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_Ldh.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
 ```
 
-```{r, fig.height = 5, fig.width = 5}
+```{r, fig.height = 12, fig.width = 12}
 p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "sima", order = T, slot = "data") + NoLegend()
 p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "_sima.pdf"), width = 5, height = 5, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "_sima.png"), width = 5, height = 5, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "_sima.pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_sima.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
 ```
 
-```{r, fig.height = 5, fig.width = 5}
+```{r, fig.height = 12, fig.width = 12}
 p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "PEK", order = T, slot = "data") + NoLegend()
 p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "_PEK.pdf"), width = 5, height = 5, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "_PEK.png"), width = 5, height = 5, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "_PEK.pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_PEK.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
 ```
 
-```{r, fig.height = 5, fig.width = 5}
+```{r, fig.height = 12, fig.width = 12}
 p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "crc", order = T, slot = "data") + NoLegend()
 p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "_crc.pdf"), width = 5, height = 5, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "_crc.png"), width = 5, height = 5, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "_crc.pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_crc.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
 ```
 
