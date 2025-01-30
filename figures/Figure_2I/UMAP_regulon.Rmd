@@ -51,7 +51,7 @@ set.seed(42)
 
 ```{r}
 input_seurat_object <- "./data/Pan_neuro_integrated_FINAL.rds"
-output_figure_prefix <- "./figures/Figure_2B/UMAP_Regulon"
+output_figure_prefix <- "./figures/Figure_2B/"
 ```
 
 ## I. Reading Seurat object
@@ -65,14 +65,16 @@ message(ncol(data.seurat), " cells were loaded")
 message(nrow(data.seurat), " genes were loaded")
 ```
 
+## Regulon UMAP plots
+
 ```{r, fig.height = 12, fig.width = 12}
 p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "SCENIC_sima_activating_regulon", order = T, slot = "data") + NoLegend()
 p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "_sima_regulon.pdf"), width = 12, height = 12, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "_sima_regulon.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "Regulon_UMAP_sima_regulon.pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Regulon_UMAP_sima_regulon.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
 ```
 
 ```{r, fig.height = 12, fig.width = 12}
@@ -81,10 +83,19 @@ p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "_sima_regulon_binarized.pdf"), width = 12, height = 12, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "_sima_regulon_binarized.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "Regulon_UMAP_sima_regulon_binarized.pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Regulon_UMAP_sima_regulon_binarized.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
 ```
 
+```{r, fig.height = 4, fig.width = 4}
+p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "SCENIC_sima_activating_regulon_binarized", order = T, slot = "data") + NoLegend()
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "Regulon_UMAP_sima_regulon_binarized_small.pdf"), width = 4, height = 4, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Regulon_UMAP_sima_regulon_binarized_small.png"), width = 4, height = 4, dpi = 1000, bg = 'white')
+```
 
 ```{r, fig.height = 12, fig.width = 12}
 p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "SCENIC_crc_activating_regulon", order = T) + NoLegend()
@@ -92,8 +103,8 @@ p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "_crc_regulon.pdf"), width = 12, height = 12, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "_crc_regulon.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "Regulon_UMAP_crc_regulon.pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Regulon_UMAP_crc_regulon.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
 ```
 
 ```{r, fig.height = 12, fig.width = 12}
@@ -102,8 +113,8 @@ p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "_crc_regulon_binarized.pdf"), width = 12, height = 12, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "_crc_regulon_binarized.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "Regulon_UMAP_crc_regulon_binarized.pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Regulon_UMAP_crc_regulon_binarized.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
 ```
 
 # Smaller
@@ -114,7 +125,72 @@ p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "_crc_regulon_binarized_small.pdf"), width = 4, height = 4, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "_crc_regulon_binarized_small.png"), width = 4, height = 4, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "Regulon_UMAP_crc_regulon_binarized_small.pdf"), width = 4, height = 4, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Regulon_UMAP_crc_regulon_binarized_small.png"), width = 4, height = 4, dpi = 1000, bg = 'white')
 ```
+
+## UMAP plots
+
+```{r, fig.height = 12, fig.width = 12}
+p <- FeaturePlot(data.seurat, reduction = "umap_harmony", pt.size = 0.5, features = "SCENIC_sima_activating_regulon", order = T, slot = "data") + NoLegend()
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "UMAP_sima_regulon.pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "UMAP_sima_regulon.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
+```
+
+```{r, fig.height = 12, fig.width = 12}
+p <- FeaturePlot(data.seurat, reduction = "umap_harmony", pt.size = 0.5, features = "SCENIC_sima_activating_regulon_binarized", order = T, slot = "data") + NoLegend()
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "UMAP_sima_regulon_binarized.pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "UMAP_sima_regulon_binarized.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
+```
+
+```{r, fig.height = 4, fig.width = 4}
+p <- FeaturePlot(data.seurat, reduction = "umap_harmony", pt.size = 0.5, features = "SCENIC_sima_activating_regulon_binarized", order = T, slot = "data") + NoLegend()
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "UMAP_sima_regulon_binarized_small.pdf"), width = 4, height = 4, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "UMAP_sima_regulon_binarized_small.png"), width = 4, height = 4, dpi = 1000, bg = 'white')
+```
+
+```{r, fig.height = 12, fig.width = 12}
+p <- FeaturePlot(data.seurat, reduction = "umap_harmony", pt.size = 0.5, features = "SCENIC_crc_activating_regulon", order = T) + NoLegend()
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "UMAP_crc_regulon.pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "UMAP_crc_regulon.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
+```
+
+```{r, fig.height = 12, fig.width = 12}
+p <- FeaturePlot(data.seurat, reduction = "umap_harmony", pt.size = 0.5, features = "SCENIC_crc_activating_regulon_binarized", order = T) + NoLegend()
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "UMAP_crc_regulon_binarized.pdf"), width = 12, height = 12, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "UMAP_crc_regulon_binarized.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
+```
+
+# Smaller
+
+```{r, fig.height = 4, fig.width = 4}
+p <- FeaturePlot(data.seurat, reduction = "umap_harmony", pt.size = 0.5, features = "SCENIC_crc_activating_regulon_binarized", order = T) + NoLegend()
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "UMAP_crc_regulon_binarized_small.pdf"), width = 4, height = 4, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "UMAP_crc_regulon_binarized_small.png"), width = 4, height = 4, dpi = 1000, bg = 'white')
+```
+
 
