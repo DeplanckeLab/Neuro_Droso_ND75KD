@@ -51,7 +51,7 @@ set.seed(42)
 
 ```{r}
 #input_seurat_object <- "./data/Pan_neuro_integrated_FINAL.rds"
-de_file <- "./figures/Figure_1DE/List_DE_ND75KD_Control_all_annotations_overall_bulk.tsv"
+de_file <- "./figures/Figure_1D/List_DE_ND75KD_Control_all_annotations_overall_bulk.tsv"
 output_figure_prefix <- "./figures/Figure_1E/Volcano_Plot"
 ```
 
