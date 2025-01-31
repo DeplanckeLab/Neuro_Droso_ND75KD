@@ -66,7 +66,7 @@ message(ncol(data.seurat), " cells were loaded")
 message(nrow(data.seurat), " genes were loaded")
 ```
 
-## Boxplot
+## Boxplot (Control + ND-75 KD)
 
 ```{r, fig.width=15,fig.height=5}
 # Extracting the relevant metadata
@@ -95,4 +95,72 @@ p
 ```{r}
 ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_117_ordered_boxplot.pdf"), width = 15, height = 5, bg = "white")
 ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_117_ordered_boxplot.png"), width = 15, height = 5, dpi = 1000, bg = 'white')
+```
+
+## Boxplot (Control only)
+
+```{r, fig.width=15,fig.height=5}
+# Extracting the relevant metadata
+boxplot_data <- as.data.frame(data.seurat[,data.seurat$orig.ident == "Pan_neuro_control"]@meta.data)
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$seurat_clusters %in% names(which(table(boxplot_data$seurat_clusters) >= 5)),]
+
+# Calculating median values of "AUC_OXPHOS_117_Flybase" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_117_Flybase, boxplot_data$annotation_clusters, median)
+
+# Sorting the metadata based on median values
+boxplot_data$annotation_clusters <- factor(boxplot_data$annotation_clusters, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = annotation_clusters, y = AUC_OXPHOS_117_Flybase, fill = annotation_clusters)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_OXPHOS_117_Flybase") +
+  #theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  #scale_fill_manual(values = annotatedClusterPalette) +
+  scale_fill_manual(values = annotationClustersPalette) +
+  NoLegend()
+
+p
+
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_117_ordered_boxplot_control-only.pdf"), width = 15, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_117_ordered_boxplot_control-only.png"), width = 15, height = 5, dpi = 1000, bg = 'white')
+```
+
+## Boxplot (ND-75 KD only)
+
+```{r, fig.width=15,fig.height=5}
+# Extracting the relevant metadata
+boxplot_data <- as.data.frame(data.seurat[,data.seurat$orig.ident == "Pan_neuro_ND75KD"]@meta.data)
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$seurat_clusters %in% names(which(table(boxplot_data$seurat_clusters) >= 5)),]
+
+# Calculating median values of "AUC_OXPHOS_117_Flybase" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_117_Flybase, boxplot_data$annotation_clusters, median)
+
+# Sorting the metadata based on median values
+boxplot_data$annotation_clusters <- factor(boxplot_data$annotation_clusters, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = annotation_clusters, y = AUC_OXPHOS_117_Flybase, fill = annotation_clusters)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_OXPHOS_117_Flybase") +
+  #theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  #scale_fill_manual(values = annotatedClusterPalette) +
+  scale_fill_manual(values = annotationClustersPalette) +
+  NoLegend()
+
+p
+
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_117_ordered_boxplot_nd75kd-only.pdf"), width = 15, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_117_ordered_boxplot_nd75kd-only.png"), width = 15, height = 5, dpi = 1000, bg = 'white')
 ```
