@@ -1,0 +1,370 @@
+---
+title: "Emma Pan Neuro (Control + ND75KD)"
+description: "Figure - DE genes between ND75KD and Control, by annotation"
+author: "Vincent Gardeux"
+date: "2025/02/04"
+updated: "2025/02/04"
+output:
+  html_document:
+    df_print: paged
+---
+
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
+```
+
+## Libraries & functions
+
+First, I'm loading the required libraries & functions
+
+```{r}
+#suppressPackageStartupMessages(library(Seurat, lib.loc = "/software/Seuratv4/lib/")) # Seurat v4.4.0, library for single-cell analysis
+#suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/software/Seuratv4/lib/")) # For compatibility purpose
+suppressPackageStartupMessages(library(Seurat)) # Seurat v5
+suppressPackageStartupMessages(library(SeuratObject)) # Seurat v5
+suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
+suppressPackageStartupMessages(library(ggplot2)) # For plotting
+suppressPackageStartupMessages(library(ggpubr)) # For grid plotting
+suppressPackageStartupMessages(library(ggrepel)) # For grid plotting
+suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
+
+cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("SeuratObject"), "version", as.character(packageVersion("SeuratObject")), "\n")
+cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
+cat(bold("ggplot2"), "version", as.character(packageVersion("ggplot2")), "\n")
+cat(bold("ggpubr"), "version", as.character(packageVersion("ggpubr")), "\n")
+cat(bold("ggrepel"), "version", as.character(packageVersion("ggrepel")), "\n")
+
+# Color-blind friendly palette 3-colors
+cbPalette <- c("#E69F00", "#000000", "#56B4E9")
+steinPalette <- c("#80C980", "#BDADD4", "#376CB0", "#FBBF85", "#F0027E")
+tissuePalette <- list(`Pan_neuro_control`="#E69F00", `Pan_neuro_ND75KD`="#56B4E9")
+celltypePalette <- list(`unannotated`="#D3D3D3", `epithelial cell`="#E0AC69", `skeletal muscle of head`="#895129", `cone cell`="#FFFFB7", `outer photoreceptor cell`="#FFF060", `photoreceptor cell`="#F2DB00", `photoreceptor-like cell`="#F0C200", `adult optic chiasma glial cell`="#d896ff", `adult brain cell body glial cell`="#efbbff", `adult brain perineurial glial cell`="#BCBDDC", `adult lamina epithelial/marginal glial cell`="#9E9AC8", `adult reticular neuropil associated glial cell`="#756BB1", `optic lobe associated cortex glial cell`="#54278F", `cholinergic neuron`="#E41A1C", `gabaergic neuron`="#377EB8", `glutamatergic neuron`="#4DAF4A", `dopaminergic neuron`="#984EA3", `serotonergic neuron`="#FF7F00", `OPN neuron`="#A6CEE3", `columnar neuron T1`="#DEEBF7", `T neuron T3`="#9ECAE1", `T neuron T4/T5`="#3182BD", `distal medullary amacrine neuron Dm3`="#c6e6ba", `distal medullary amacrine neuron Dm8`="#A1D99B", `distal medullary amacrine neuron Dm9`="#31A354", `proximal medullary amacrine neuron Pm4`="#006D2C", `centrifugal neuron C2`="#7FC97F", `centrifugal neuron C3`="#BEAED4", `medullary intrinsic neuron Mi1`="#d8d5eb", `medullary intrinsic neuron Mi4`="#BCBDDC", `medullary intrinsic neuron Mi15`="#756BB1", `transmedullary neuron Tm1`="#b4dee9", `transmedullary neuron Tm2`="#bfdfe7", `transmedullary neuron Tm9`="#7eb5c4", `transmedullary neuron Tm20`="#9fcad5", `transmedullary Y neuron TmY14`="#5da1b3", `transmedullary Y neuron TmY5a`="#3c8ca2", `transmedullary Y neuron TmY8`="#1a7790", `tm5ab`="#014636", `lamina monopolar neuron L1 + L2`="#FDD3A0", `lamina monopolar neuron L3`="#FDBE85", `lamina monopolar neuron L4`="#FD8D3C", `lamina monopolar neuron L5`="#E6550D", `lamina wide-field 2 neuron`="#A63603", `lobular columnar neuron LC12`="#BC80BD", `olfactory receptor neuron`="#CCEBC5", `Poxn neuron`="#FFED6F", `hemocyte`="#999999", `kenyon cell`="#B3E2CD", `gamma kenyon cell`="#FDCDAC", `pigment cell`="#EE82EE")
+
+
+# Random seed
+set.seed(42)
+```
+
+## Parameters
+
+```{r}
+input_seurat_object <- "./data/Pan_neuro_integrated_FINAL.rds"
+output_figure_prefix <- "./figures/Figure_1X/Volcano_plot_regulons"
+SCENIC_regulons_path <- "./data/Pan_neuro_integrated_regulons_aucell.tsv"
+marker_regulon_output <- "./data/Pan_neuro_integrated_markers_regulons"
+```
+
+## I. Reading Seurat object
+
+First step is to read the Seurat objects, previously created
+
+```{r}
+message("Loading Seurat object...")
+data.seurat <- readRDS(input_seurat_object)
+message(ncol(data.seurat), " cells were loaded")
+message(nrow(data.seurat), " genes were loaded")
+```
+
+## II. Differentially activated regulons (based on non-binarized data)
+
+```{r}
+# 1. Put SCENIC regulon in a new assay
+data.scenic <- fread(SCENIC_regulons_path, data.table = F)
+rownames(data.scenic) <- data.scenic$Cell
+data.scenic <- data.scenic[,-1]
+colnames(data.scenic) <- gsub(x = colnames(data.scenic), pattern = "\\(\\+\\)", replacement = "-activating-regulon")
+colnames(data.scenic) <- gsub(x = colnames(data.scenic), pattern = "\\(\\-\\)", replacement = "-repressing-regulon")
+colnames(data.scenic) <- paste0("SCENIC-", colnames(data.scenic))
+data.seurat@assays[["SCENIC"]] <- CreateAssayObject(data = t(data.scenic)[,colnames(data.seurat)], check.matrix = F)
+
+# 2. Run DE
+data.seurat <- SetIdent(data.seurat, value = "seurat_clusters")
+all.markers <- FindAllMarkers(data.seurat, assay = "SCENIC", slot = "data", verbose = T, test.use = "wilcox", random.seed = 42) # For unknown reasons Seuratv4 fails. So I use Seuratv5.
+
+fwrite(all.markers, file = paste0(marker_regulon_output, ".tsv"), sep = "\t")
+all.markers
+```
+
+### DE in cluster 2
+
+sima (p.5) and crc (p.19) are there, but with low fold change: sima(log2FC = 0.7389760) & crc(log2FC = 0.3106056)
+
+```{r}
+all.markers.2 <- subset(all.markers, cluster == "2")
+all.markers.2 <- all.markers.2[order(abs(all.markers.2$avg_log2FC), decreasing = T),]
+all.markers.2
+```
+
+## Volcano Plot
+
+```{r, fig.width=7, fig.height=5}
+# Add required columns
+all.markers.2$neg_log10_p_val_adj <- -log10(all.markers.2$p_val_adj)
+all.markers.2$neg_log10_p_val_adj[is.infinite(all.markers.2$neg_log10_p_val_adj)] <- 300
+all.markers.2$category <- "Non-significant"
+all.markers.2$category[all.markers.2$p_val_adj <= 0.05 & all.markers.2$avg_log2FC >= 1] <- "Upregulated"
+all.markers.2$category[all.markers.2$p_val_adj <= 0.05 & all.markers.2$avg_log2FC <= -1] <- "Downregulated"
+all.markers.2$regulon <- gsub(x = all.markers.2$gene, pattern = "SCENIC-", replacement = "")
+all.markers.2$regulon <- gsub(x = all.markers.2$regulon, pattern = "-activating-regulon", replacement = "")
+
+# Choose coloring
+colors.volcano <- c("Non-significant" = "grey", "Upregulated" = "red", "Downregulated" = "blue")
+
+# Genes to annotate
+genes_to_label <- c("sage", "Hr39", "Atf-2", "gt", "sima", "crc", "CG10348", "CG6808", "esg", "bowl", "NC2alpha", "su(Hw)", "Mtk", "ovo", "Myc", "odd", "Mabi", "CG4374", "term", "CG1602")
+
+# Plot
+p <- ggplot(all.markers.2, aes(x = avg_log2FC, y = neg_log10_p_val_adj, color = category)) +
+  geom_point(alpha = 0.7, size = 3) +
+  scale_color_manual(values = colors.volcano) +
+  geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "black") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black") +
+  labs(x = "Log2 Fold Change", y = "-Log10 Adjusted p-value", color = NULL) +
+  theme_minimal() +
+  geom_text_repel(data = subset(all.markers.2, regulon %in% genes_to_label), aes(label = regulon), size = 4, segment.color = "black", box.padding = 1, point.padding = 1, max.overlaps = 100)
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, ".pdf"), width = 7, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, ".png"), width = 7, height = 5, dpi = 1000, bg = 'white')
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("crc", "SCENIC_crc_activating_regulon", "SCENIC_crc_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("sima", "SCENIC_sima_activating_regulon", "SCENIC_sima_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("su(Hw)", "SCENIC_su(Hw)_activating_regulon", "SCENIC_su(Hw)_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("gt", "SCENIC_gt_activating_regulon", "SCENIC_gt_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("sage", "SCENIC_sage_activating_regulon", "SCENIC_sage_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("Hr39", "SCENIC_Hr39_activating_regulon", "SCENIC_Hr39_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+### DE in cluster 23
+
+sima is on the first page, and crc is on the second page.
+
+```{r}
+all.markers.23 <- subset(all.markers, cluster == "23")
+all.markers.23 <- all.markers.23[order(abs(all.markers.23$avg_log2FC), decreasing = T),]
+all.markers.23
+```
+
+## Volcano Plot
+
+```{r, fig.width=7, fig.height=5}
+# Add required columns
+all.markers.23$neg_log10_p_val_adj <- -log10(all.markers.23$p_val_adj)
+all.markers.23$neg_log10_p_val_adj[is.infinite(all.markers.23$neg_log10_p_val_adj)] <- 300
+all.markers.23$category <- "Non-significant"
+all.markers.23$category[all.markers.23$p_val_adj <= 0.05 & all.markers.23$avg_log2FC >= 1] <- "Upregulated"
+all.markers.23$category[all.markers.23$p_val_adj <= 0.05 & all.markers.23$avg_log2FC <= -1] <- "Downregulated"
+all.markers.23$regulon <- gsub(x = all.markers.23$gene, pattern = "SCENIC-", replacement = "")
+all.markers.23$regulon <- gsub(x = all.markers.23$regulon, pattern = "-activating-regulon", replacement = "")
+
+# Choose coloring
+colors.volcano <- c("Non-significant" = "grey", "Upregulated" = "red", "Downregulated" = "blue")
+
+# Genes to annotate
+genes_to_label <- c("CG5245", "CG9876", "CG33213", "p53", "Hey", "Myc", "dbr", "dany", "insv", "hkb", "Ssrp", "jumu", "hang", "gsb", "Hr39", "sage", "Atf-2", "gt", "sima", "crc", "CG6808", "esg", "bowl", "NC2alpha", "Myc", "odd", "term", "CG1602")
+
+# Plot
+p <- ggplot(all.markers.23, aes(x = avg_log2FC, y = neg_log10_p_val_adj, color = category)) +
+  geom_point(alpha = 0.7, size = 3) +
+  scale_color_manual(values = colors.volcano) +
+  geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "black") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black") +
+  labs(x = "Log2 Fold Change", y = "-Log10 Adjusted p-value", color = NULL) +
+  theme_minimal() +
+  geom_text_repel(data = subset(all.markers.23, regulon %in% genes_to_label), aes(label = regulon), size = 4, segment.color = "black", box.padding = 1, point.padding = 1, max.overlaps = 100)
+p
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("Hey", "SCENIC_Hey_activating_regulon", "SCENIC_Hey_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("NC2alpha", "SCENIC_NC2alpha_activating_regulon", "SCENIC_NC2alpha_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("p53", "SCENIC_p53_activating_regulon", "SCENIC_p53_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+```{r, fig.height = 5, fig.width = 15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("bowl", "SCENIC_bowl_activating_regulon", "SCENIC_bowl_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
+```
+
+
+## VIII. Differentially activated regulons in Pan neuro CTRL (based on non-binarized data)
+
+```{r}
+# 1. Subset the object
+Idents(data.seurat) <- "orig.ident"
+data.seurat@assays[["SCENIC"]] <- NULL
+data.seurat.ctrl <- subset(x = data.seurat, idents = c("Pan_neuro_control"))
+
+# 2. Put SCENIC regulon in a new assay
+data.scenic <- fread(SCENIC_regulons_path, data.table = F)
+rownames(data.scenic) <- data.scenic$Cell
+data.scenic <- data.scenic[,-1]
+colnames(data.scenic) <- gsub(x = colnames(data.scenic), pattern = "\\(\\+\\)", replacement = "-activating-regulon")
+colnames(data.scenic) <- gsub(x = colnames(data.scenic), pattern = "\\(\\-\\)", replacement = "-repressing-regulon")
+colnames(data.scenic) <- paste0("SCENIC-", colnames(data.scenic))
+data.seurat.ctrl@assays[["SCENIC"]] = CreateAssayObject(data = t(data.scenic)[,colnames(data.seurat.ctrl)], check.matrix = F)
+
+# 3. Run DE
+data.seurat.ctrl <- SetIdent(data.seurat.ctrl, value = "seurat_clusters")
+all.markers <- FindAllMarkers(data.seurat.ctrl, assay = "SCENIC", slot = "data", verbose = T, test.use = "wilcox", random.seed = 42) # For unknown reasons Seuratv4 fails. So I use Seuratv5.
+
+fwrite(all.markers, file = paste0(marker_regulon_output, "_ctrl.tsv"), sep = "\t")
+
+all.markers
+```
+
+### DE in cluster 2
+
+```{r}
+ctrl.markers.2 <- subset(all.markers, cluster == "2")
+ctrl.markers.2 <- ctrl.markers.2[order(abs(ctrl.markers.2$avg_log2FC), decreasing = T),]
+ctrl.markers.2
+```
+
+Nothing is significant...
+(because of the number of cells 4 CTRL vs 813 ND75KD)
+
+### DE in cluster 23
+
+```{r}
+ctrl.markers.23 <- subset(all.markers, cluster == "23")
+ctrl.markers.23 <- ctrl.markers.23[order(abs(ctrl.markers.23$avg_log2FC), decreasing = T),]
+ctrl.markers.23
+```
+
+Was not run because cluster 23 has less than 3 cells for CTRL samples (2 CTRL cells vs 331 ND75KD cells)
+
+## IX. Differentially activated regulons in Pan neuro ND75KD (based on non-binarized data)
+
+```{r}
+# 1. Subset the object
+Idents(data.seurat) <- "orig.ident"
+data.seurat@assays[["SCENIC"]] <- NULL
+data.seurat.ctrl <- subset(x = data.seurat, idents = c("Pan_neuro_ND75KD"))
+
+# 2. Put SCENIC regulon in a new assay
+data.scenic <- fread(SCENIC_regulons_path, data.table = F)
+rownames(data.scenic) <- data.scenic$Cell
+data.scenic <- data.scenic[,-1]
+colnames(data.scenic) <- gsub(x = colnames(data.scenic), pattern = "\\(\\+\\)", replacement = "-activating-regulon")
+colnames(data.scenic) <- gsub(x = colnames(data.scenic), pattern = "\\(\\-\\)", replacement = "-repressing-regulon")
+colnames(data.scenic) <- paste0("SCENIC-", colnames(data.scenic))
+data.seurat.ctrl@assays[["SCENIC"]] = CreateAssayObject(data = t(data.scenic)[,colnames(data.seurat.ctrl)], check.matrix = F)
+
+# 3. Run DE
+data.seurat.ctrl <- SetIdent(data.seurat.ctrl, value = "seurat_clusters")
+all.markers <- FindAllMarkers(data.seurat.ctrl, assay = "SCENIC", slot = "data", verbose = T, test.use = "wilcox", random.seed = 42) # For unknown reasons Seuratv4 fails. So I use Seuratv5.
+
+fwrite(all.markers, file = paste0(marker_regulon_output, "_nd75kd.tsv"), sep = "\t")
+
+all.markers
+```
+
+### DE in cluster 2
+
+```{r}
+nd75kd.markers.2 <- subset(all.markers, cluster == "2")
+nd75kd.markers.2 <- nd75kd.markers.2[order(abs(nd75kd.markers.2$avg_log2FC), decreasing = T),]
+nd75kd.markers.2
+```
+
+More or less same results than with all cells. There are a few less significant ones.
+And 3 'new' downregulated ones: "CG14655", "nau", "eg"
+
+## Volcano Plot
+
+```{r, fig.width=7, fig.height=5}
+# Add required columns
+nd75kd.markers.2$neg_log10_p_val_adj <- -log10(nd75kd.markers.2$p_val_adj)
+nd75kd.markers.2$neg_log10_p_val_adj[is.infinite(nd75kd.markers.2$neg_log10_p_val_adj)] <- 300
+nd75kd.markers.2$category <- "Non-significant"
+nd75kd.markers.2$category[nd75kd.markers.2$p_val_adj <= 0.05 & nd75kd.markers.2$avg_log2FC >= 1] <- "Upregulated"
+nd75kd.markers.2$category[nd75kd.markers.2$p_val_adj <= 0.05 & nd75kd.markers.2$avg_log2FC <= -1] <- "Downregulated"
+nd75kd.markers.2$regulon <- gsub(x = nd75kd.markers.2$gene, pattern = "SCENIC-", replacement = "")
+nd75kd.markers.2$regulon <- gsub(x = nd75kd.markers.2$regulon, pattern = "-activating-regulon", replacement = "")
+
+# Choose coloring
+colors.volcano <- c("Non-significant" = "grey", "Upregulated" = "red", "Downregulated" = "blue")
+
+# Genes to annotate
+genes_to_label <- c("sage", "Hr39", "Atf-2", "gt", "sima", "crc", "CG10348", "esg", "bowl", "ovo", "Mabi", "CG4374", "term", "CG1602", "CG14655", "nau", "eg")
+
+# Plot
+p <- ggplot(nd75kd.markers.2, aes(x = avg_log2FC, y = neg_log10_p_val_adj, color = category)) +
+  geom_point(alpha = 0.7, size = 3) +
+  scale_color_manual(values = colors.volcano) +
+  geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "black") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black") +
+  labs(x = "Log2 Fold Change", y = "-Log10 Adjusted p-value", color = NULL) +
+  theme_minimal() +
+  geom_text_repel(data = subset(nd75kd.markers.2, regulon %in% genes_to_label), aes(label = regulon), size = 4, segment.color = "black", box.padding = 1, point.padding = 1, max.overlaps = 100)
+p
+```
+
+### DE in cluster 23
+
+```{r}
+nd75kd.markers.23 <- subset(all.markers, cluster == "23")
+nd75kd.markers.23 <- nd75kd.markers.23[order(abs(nd75kd.markers.23$avg_log2FC), decreasing = T),]
+nd75kd.markers.23
+```
+
+More or less same results than with all cells, a few less significant ones.
+One new one: "CG10348"
+
+## Volcano Plot
+
+```{r, fig.width=7, fig.height=5}
+# Add required columns
+nd75kd.markers.23$neg_log10_p_val_adj <- -log10(nd75kd.markers.23$p_val_adj)
+nd75kd.markers.23$neg_log10_p_val_adj[is.infinite(nd75kd.markers.23$neg_log10_p_val_adj)] <- 300
+nd75kd.markers.23$category <- "Non-significant"
+nd75kd.markers.23$category[nd75kd.markers.23$p_val_adj <= 0.05 & nd75kd.markers.23$avg_log2FC >= 1] <- "Upregulated"
+nd75kd.markers.23$category[nd75kd.markers.23$p_val_adj <= 0.05 & nd75kd.markers.23$avg_log2FC <= -1] <- "Downregulated"
+nd75kd.markers.23$regulon <- gsub(x = nd75kd.markers.23$gene, pattern = "SCENIC-", replacement = "")
+nd75kd.markers.23$regulon <- gsub(x = nd75kd.markers.23$regulon, pattern = "-activating-regulon", replacement = "")
+
+# Choose coloring
+colors.volcano <- c("Non-significant" = "grey", "Upregulated" = "red", "Downregulated" = "blue")
+
+# Genes to annotate
+genes_to_label <- c("CG5245", "CG9876", "CG33213", "p53", "Hey", "Myc", "dbr", "dany", "insv", "hkb", "gsb", "Hr39", "sage", "Atf-2", "gt", "sima", "crc", "CG6808", "esg", "bowl", "NC2alpha", "Myc", "odd", "term", "CG1602", "CG10348")
+
+# Plot
+p <- ggplot(nd75kd.markers.23, aes(x = avg_log2FC, y = neg_log10_p_val_adj, color = category)) +
+  geom_point(alpha = 0.7, size = 3) +
+  scale_color_manual(values = colors.volcano) +
+  geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "black") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black") +
+  labs(x = "Log2 Fold Change", y = "-Log10 Adjusted p-value", color = NULL) +
+  theme_minimal() +
+  geom_text_repel(data = subset(nd75kd.markers.23, regulon %in% genes_to_label), aes(label = regulon), size = 4, segment.color = "black", box.padding = 1, point.padding = 1, max.overlaps = 100)
+p
+```
