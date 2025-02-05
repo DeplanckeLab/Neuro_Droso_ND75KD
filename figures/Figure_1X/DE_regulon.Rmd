@@ -82,10 +82,78 @@ data.seurat@assays[["SCENIC"]] <- CreateAssayObject(data = t(data.scenic)[,colna
 
 # 2. Run DE
 data.seurat <- SetIdent(data.seurat, value = "seurat_clusters")
-all.markers <- FindAllMarkers(data.seurat, assay = "SCENIC", slot = "data", verbose = T, test.use = "wilcox", random.seed = 42) # For unknown reasons Seuratv4 fails. So I use Seuratv5.
+all.markers <- FindAllMarkers(data.seurat, assay = "SCENIC", slot = "data", verbose = T, test.use = "wilcox", random.seed = 42, logfc.threshold = 0, min.pct = -Inf) # For unknown reasons Seuratv4 fails. So I use Seuratv5.
+all.markers$regulon <- gsub(x = all.markers$gene, pattern = "SCENIC-", replacement = "")
+all.markers$regulon <- gsub(x = all.markers$regulon, pattern = "-activating-regulon", replacement = "")
 
 fwrite(all.markers, file = paste0(marker_regulon_output, ".tsv"), sep = "\t")
 all.markers
+```
+
+## Plot nb genes
+
+```{r, fig.width = 10, fig.height=5}
+all.markers.significant <- all.markers[all.markers$p_val_adj <= 0.05,] #
+
+# Create a table of DE genes by cluster
+nGenesByCluster <- table(all.markers.significant$cluster)
+
+# Convert the table to a data frame
+df.nGenesByCluster <- as.data.frame(nGenesByCluster)
+colnames(df.nGenesByCluster) <- c("cluster", "Freq")
+
+# Reorder factor levels by Freq (descending), so the bar plot is sorted
+df.nGenesByCluster$cluster <- factor(
+  df.nGenesByCluster$cluster,
+  levels = df.nGenesByCluster$cluster[order(df.nGenesByCluster$Freq, decreasing = TRUE)]
+)
+
+# Plot the number of DE genes by annotation as a bar plot
+p <- ggplot(df.nGenesByCluster, aes(x = cluster, y = Freq)) +
+  geom_bar(stat = "identity") +
+  ylab("#DEGs marker regulons") +
+  labs(x = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        panel.grid.major.x = element_blank(), # Remove major vertical grid lines
+        panel.grid.minor.x = element_blank(), # Remove minor vertical grid lines
+        panel.grid.minor.y = element_blank()) + # Remove minor horizontal grid lines
+  NoLegend()
+
+p
+```
+
+## Plot nb genes
+
+```{r, fig.width = 10, fig.height=5}
+all.markers.significant <- all.markers[all.markers$p_val_adj <= 0.05 & abs(all.markers$avg_log2FC) > 1,] #
+
+# Create a table of DE genes by cluster
+nGenesByCluster <- table(all.markers.significant$cluster)
+
+# Convert the table to a data frame
+df.nGenesByCluster <- as.data.frame(nGenesByCluster)
+colnames(df.nGenesByCluster) <- c("cluster", "Freq")
+
+# Reorder factor levels by Freq (descending), so the bar plot is sorted
+df.nGenesByCluster$cluster <- factor(
+  df.nGenesByCluster$cluster,
+  levels = df.nGenesByCluster$cluster[order(df.nGenesByCluster$Freq, decreasing = TRUE)]
+)
+
+# Plot the number of DE genes by annotation as a bar plot
+p <- ggplot(df.nGenesByCluster, aes(x = cluster, y = Freq)) +
+  geom_bar(stat = "identity") +
+  ylab("#DEGs marker regulons") +
+  labs(x = NULL) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
+        panel.grid.major.x = element_blank(), # Remove major vertical grid lines
+        panel.grid.minor.x = element_blank(), # Remove minor vertical grid lines
+        panel.grid.minor.y = element_blank()) + # Remove minor horizontal grid lines
+  NoLegend()
+
+p
 ```
 
 ### DE in cluster 2
@@ -93,6 +161,8 @@ all.markers
 sima (p.5) and crc (p.19) are there, but with low fold change: sima(log2FC = 0.7389760) & crc(log2FC = 0.3106056)
 
 ```{r}
+#all.markers.2  <- FindMarkers(data.seurat, assay = "SCENIC", slot = "data", verbose = T, test.use = "LR", random.seed = 42, logfc.threshold = 0, min.pct = -Inf, latent.vars = "orig.ident", ident.1 = "2") # For unknown reasons Seuratv4 fails. So I use Seuratv5.
+#all.markers.2$gene <- rownames(all.markers.2)
 all.markers.2 <- subset(all.markers, cluster == "2")
 all.markers.2 <- all.markers.2[order(abs(all.markers.2$avg_log2FC), decreasing = T),]
 all.markers.2
@@ -100,21 +170,29 @@ all.markers.2
 
 ## Volcano Plot
 
-```{r, fig.width=7, fig.height=5}
+```{r, fig.width=8, fig.height=5}
 # Add required columns
 all.markers.2$neg_log10_p_val_adj <- -log10(all.markers.2$p_val_adj)
 all.markers.2$neg_log10_p_val_adj[is.infinite(all.markers.2$neg_log10_p_val_adj)] <- 300
+
+# Define categories
 all.markers.2$category <- "Non-significant"
-all.markers.2$category[all.markers.2$p_val_adj <= 0.05 & all.markers.2$avg_log2FC >= 1] <- "Upregulated"
-all.markers.2$category[all.markers.2$p_val_adj <= 0.05 & all.markers.2$avg_log2FC <= -1] <- "Downregulated"
-all.markers.2$regulon <- gsub(x = all.markers.2$gene, pattern = "SCENIC-", replacement = "")
-all.markers.2$regulon <- gsub(x = all.markers.2$regulon, pattern = "-activating-regulon", replacement = "")
+all.markers.2$category[all.markers.2$p_val_adj <= 0.05 & all.markers.2$avg_log2FC > 1] <- "Upregulated"
+all.markers.2$category[all.markers.2$p_val_adj <= 0.05 & all.markers.2$avg_log2FC > 0 & all.markers.2$avg_log2FC <= 1] <- "Upregulated (low effect size)"
+all.markers.2$category[all.markers.2$p_val_adj <= 0.05 & all.markers.2$avg_log2FC < -1] <- "Downregulated"
+all.markers.2$category[all.markers.2$p_val_adj <= 0.05 & all.markers.2$avg_log2FC < 0 & all.markers.2$avg_log2FC >= -1] <- "Downregulated (low effect size)"
 
 # Choose coloring
-colors.volcano <- c("Non-significant" = "grey", "Upregulated" = "red", "Downregulated" = "blue")
+colors.volcano <- c("Non-significant" = "grey", 
+                    "Upregulated" = "darkblue", 
+                    "Upregulated (low effect size)" = "lightblue",
+                    "Downregulated" = "darkred", 
+                    "Downregulated (low effect size)" = "lightcoral")
 
 # Genes to annotate
-genes_to_label <- c("sage", "Hr39", "Atf-2", "gt", "sima", "crc", "CG10348", "CG6808", "esg", "bowl", "NC2alpha", "su(Hw)", "Mtk", "ovo", "Myc", "odd", "Mabi", "CG4374", "term", "CG1602")
+genes_to_label <- c("sage", "Hr39", "Atf-2", "gt", "sima", "crc", "CG10348", "CG6808", 
+                    "esg", "bowl", "NC2alpha", "su(Hw)", "Mtk", "ovo", "Myc", "odd", 
+                    "Mabi", "CG4374", "term", "CG1602")
 
 # Plot
 p <- ggplot(all.markers.2, aes(x = avg_log2FC, y = neg_log10_p_val_adj, color = category)) +
@@ -124,13 +202,16 @@ p <- ggplot(all.markers.2, aes(x = avg_log2FC, y = neg_log10_p_val_adj, color = 
   geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black") +
   labs(x = "Log2 Fold Change", y = "-Log10 Adjusted p-value", color = NULL) +
   theme_minimal() +
-  geom_text_repel(data = subset(all.markers.2, regulon %in% genes_to_label), aes(label = regulon), size = 4, segment.color = "black", box.padding = 1, point.padding = 1, max.overlaps = 100)
+  geom_text_repel(data = subset(all.markers.2, regulon %in% genes_to_label), 
+                  aes(label = regulon), size = 4, segment.color = "black", 
+                  box.padding = 1, point.padding = 1, max.overlaps = 100)
+
 p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, ".pdf"), width = 7, height = 5, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, ".png"), width = 7, height = 5, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "_cluster_2.pdf"), width = 7, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_cluster_2.png"), width = 7, height = 5, dpi = 1000, bg = 'white')
 ```
 
 ```{r, fig.height = 5, fig.width = 15}
@@ -195,6 +276,11 @@ p <- ggplot(all.markers.23, aes(x = avg_log2FC, y = neg_log10_p_val_adj, color =
   theme_minimal() +
   geom_text_repel(data = subset(all.markers.23, regulon %in% genes_to_label), aes(label = regulon), size = 4, segment.color = "black", box.padding = 1, point.padding = 1, max.overlaps = 100)
 p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "_cluster_23.pdf"), width = 7, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_cluster_23.png"), width = 7, height = 5, dpi = 1000, bg = 'white')
 ```
 
 ```{r, fig.height = 5, fig.width = 15}
@@ -328,6 +414,11 @@ p <- ggplot(nd75kd.markers.2, aes(x = avg_log2FC, y = neg_log10_p_val_adj, color
 p
 ```
 
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "_cluster_2_ND75KD-only.pdf"), width = 7, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_cluster_2_ND75KD-only.png"), width = 7, height = 5, dpi = 1000, bg = 'white')
+```
+
 ### DE in cluster 23
 
 ```{r}
@@ -367,4 +458,9 @@ p <- ggplot(nd75kd.markers.23, aes(x = avg_log2FC, y = neg_log10_p_val_adj, colo
   theme_minimal() +
   geom_text_repel(data = subset(nd75kd.markers.23, regulon %in% genes_to_label), aes(label = regulon), size = 4, segment.color = "black", box.padding = 1, point.padding = 1, max.overlaps = 100)
 p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "_cluster_23_ND75KD-only.pdf"), width = 7, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_cluster_23_ND75KD-only.png"), width = 7, height = 5, dpi = 1000, bg = 'white')
 ```
