@@ -1,9 +1,9 @@
 ---
 title: "Emma Pan Neuro (Control + ND75KD)"
-description: "Figure 5X"
+description: "Figure 4B"
 author: "Vincent Gardeux"
 date: "2025/01/31"
-updated: "2025/01/31"
+updated: "2025/02/10"
 output:
   html_document:
     df_print: paged
@@ -52,7 +52,7 @@ set.seed(42)
 
 ```{r}
 input_seurat_object <- "./data/Pan_neuro_integrated_FINAL.rds"
-output_figure_prefix <- "./figures/Figure_5X/"
+output_figure_prefix <- "./figures/Figure_4B/"
 ```
 
 ## I. Reading Seurat object
@@ -96,6 +96,7 @@ ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_117_by_neuron_category
 stats <- wilcox.test(boxplot_data$AUC_OXPHOS_117_Flybase[boxplot_data$Neuron_category == "Central Brain A"], boxplot_data$AUC_OXPHOS_117_Flybase[boxplot_data$Neuron_category == "Central Brain B"])
 stats
 ```
+
 ```{r}
 stats <- wilcox.test(boxplot_data$AUC_OXPHOS_117_Flybase[boxplot_data$Neuron_category == "Central Brain A"], boxplot_data$AUC_OXPHOS_117_Flybase[boxplot_data$Neuron_category == "Optic lobe"])
 stats
@@ -121,7 +122,7 @@ stats <- wilcox.test(boxplot_data$AUC_OXPHOS_117_Flybase[boxplot_data$Neuron_cat
 stats
 ```
 
-```{r, fig.width=2,fig.height=7}
+```{r, fig.width=3,fig.height=8}
 # Extracting the relevant metadata
 boxplot_data <- as.data.frame(data.seurat@meta.data)
 
@@ -147,6 +148,6 @@ p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_117_by_neuron_category_with_signif.pdf"), width = 2, height = 7, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_117_by_neuron_category_with_signif.png"), width = 2, height = 7, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_117_by_neuron_category_with_signif.pdf"), width = 3, height = 8, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_117_by_neuron_category_with_signif.png"), width = 3, height = 8, dpi = 1000, bg = 'white')
 ```
