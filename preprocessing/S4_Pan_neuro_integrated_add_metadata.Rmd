@@ -52,7 +52,8 @@ input_seurat_integrated <- "./data/Pan_neuro_integrated.rds"
 input_curated_annotations <- "./data/Pan_neuro_integrated_markers_annotation.txt"
 input_SCENIC_regulons_path <- "./data/Pan_neuro_integrated_regulons_aucell.tsv"
 input_SCENIC_regulons_binarized_path <- "./data/Pan_neuro_integrated_regulons_aucell_binarized.tsv"
-input_Oxphos_AUCell_values_path <- "./data/Pan_neuro_integrated_117_Oxphos_AUCell_auc.tsv"
+input_Oxphos_117_AUCell_values_path <- "./data/Pan_neuro_integrated_117_Oxphos_AUCell_auc.tsv"
+input_Oxphos_68_AUCell_values_path <- "./data/Pan_neuro_integrated_68_Oxphos_AUCell_auc.tsv"
 
 output_seurat_final <- "./data/Pan_neuro_integrated_FINAL.rds"
 ```
@@ -304,7 +305,7 @@ DimPlot(data.seurat, reduction = "SCENICbinarizedtsne", pt.size = 0.5, group.by 
 ## VI.1 Reading OXPHOS AUC values from AUCell (using the 117 OXPHOS genes from Flybase GO-BP GO:0006119 : oxidative phosphorylation)
 
 ```{r}
-data.auc <- fread(input_Oxphos_AUCell_values_path, data.table = F)
+data.auc <- fread(input_Oxphos_117_AUCell_values_path, data.table = F)
 rownames(data.auc) <- data.auc$Cell
 data.auc
 ```
@@ -316,7 +317,22 @@ data.seurat$AUC_OXPHOS_117_Flybase <- data.auc[colnames(data.seurat), "AUC"]
 hist(data.seurat$AUC_OXPHOS_117_Flybase)
 ```
 
-## VII. Save Seurat object
+## VII.1 Reading OXPHOS AUC values from AUCell (using the 68 OXPHOS genes from Porcelli et al. https://link.springer.com/article/10.1186/1471-2148-7-215)
+
+```{r}
+data.auc <- fread(input_Oxphos_68_AUCell_values_path, data.table = F)
+rownames(data.auc) <- data.auc$Cell
+data.auc
+```
+
+## VII.2 Adding to Seurat object
+
+```{r}
+data.seurat$AUC_OXPHOS_68_Porcelli <- data.auc[colnames(data.seurat), "AUC"]
+hist(data.seurat$AUC_OXPHOS_68_Porcelli)
+```
+
+## VIII. Save Seurat object
 
 ```{r}
 saveRDS(data.seurat, file = output_seurat_final)
