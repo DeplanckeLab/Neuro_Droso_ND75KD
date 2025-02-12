@@ -2,7 +2,7 @@
 title: "Creating ASAP/SCENIC-compatible Loom file from Seurat object"
 author: "Vincent Gardeux"
 date: "2024/03/05"
-updated: "2025/01/09"
+updated: "2025/02/12"
 output:
   html_document:
     df_print: paged
@@ -36,8 +36,9 @@ cat(bold("Matrix"), "version", as.character(packageVersion("Matrix")), "\n")
 
 ```{r}
 # Parameters
-seurat_input <- "data/Pan_neuro_integrated_FINAL.rds"
-loom_output <- "data/Pan_neuro_integrated_FINAL.loom"
+seurat_input <- "./data/Pan_neuro_integrated_FINAL.rds"
+loom_output <- "./data/Pan_neuro_integrated_FINAL.loom"
+gene_ensembl_mapping_path <- "./data/features.tsv"
 
 # Random seed
 set.seed(42)
@@ -57,7 +58,7 @@ message(nrow(data.seurat), " genes were loaded")
 ## I.2 Loading gene mapping from CellRanger output (I did not perform the CellRanger alignment)
 
 ```{r}
-gene.mapping = fread('data/features.tsv', header = F, data.table = F)
+gene.mapping = fread(gene_ensembl_mapping_path, header = F, data.table = F)
 colnames(gene.mapping) <- c("Ensembl", "Name", "Biotype")
 gene.mapping$Name <- gsub(x = gene.mapping$Name, pattern = "_", replacement = "-")
 rownames(gene.mapping) <- gene.mapping$Name

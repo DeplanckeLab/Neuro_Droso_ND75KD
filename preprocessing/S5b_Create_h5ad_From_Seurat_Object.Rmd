@@ -2,7 +2,7 @@
 title: "Creating h5ad file from Seurat object"
 author: "Vincent Gardeux"
 date: "2025/01/14"
-updated: "2025/01/14"
+updated: "2025/02/12"
 output:
   html_document:
     df_print: paged
@@ -44,8 +44,9 @@ py_config()
 
 ```{r}
 # Parameters
-seurat_input <- "data/Pan_neuro_integrated_FINAL.rds"
-h5ad_output <- "data/Pan_neuro_integrated_FINAL.h5ad"
+seurat_input <- "./data/Pan_neuro_integrated_FINAL.rds"
+h5ad_output <- "./data/Pan_neuro_integrated_FINAL.h5ad"
+gene_ensembl_mapping_path <- "./data/features.tsv"
 
 # Random seed
 set.seed(42)
@@ -65,7 +66,7 @@ message(nrow(data.seurat), " genes were loaded")
 ## I.2 Loading gene mapping from CellRanger output (I did not perform the CellRanger alignment)
 
 ```{r}
-gene.mapping = fread('data/features.tsv', header = F, data.table = F)
+gene.mapping = fread(gene_ensembl_mapping_path, header = F, data.table = F)
 colnames(gene.mapping) <- c("Ensembl", "Name", "Biotype")
 gene.mapping$Name <- gsub(x = gene.mapping$Name, pattern = "_", replacement = "-")
 rownames(gene.mapping) <- gene.mapping$Name
@@ -136,7 +137,6 @@ if (length(reductions) > 0) {
 ```{r}
 # AnnData object creation using reticulate
 ad <- reticulate::import("anndata")
-#adata <- anndata$AnnData(X = Matrix::t(X), raw = list(X = Matrix::t(raw.X)), obs = obs, var = var, obsm = obsm)
 adata <- ad$AnnData(X = Matrix::t(X), raw = list(X = Matrix::t(raw.X), var = var), obs = obs, var = var, obsm = obsm)
 ```
 
