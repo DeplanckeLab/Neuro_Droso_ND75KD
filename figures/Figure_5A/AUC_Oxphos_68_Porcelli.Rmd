@@ -89,7 +89,6 @@ p <- ggplot(boxplot_data, aes(x = annotation_clusters, y = AUC_OXPHOS_68_Porcell
   NoLegend()
 
 p
-
 ```
 
 ```{r}
@@ -123,7 +122,6 @@ p <- ggplot(boxplot_data, aes(x = annotation_clusters, y = AUC_OXPHOS_68_Porcell
   NoLegend()
 
 p
-
 ```
 
 ```{r}
@@ -157,7 +155,6 @@ p <- ggplot(boxplot_data, aes(x = annotation_clusters, y = AUC_OXPHOS_68_Porcell
   NoLegend()
 
 p
-
 ```
 
 ```{r}
