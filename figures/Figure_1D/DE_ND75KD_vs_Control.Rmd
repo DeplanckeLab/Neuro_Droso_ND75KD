@@ -55,7 +55,7 @@ set.seed(42)
 ```{r}
 input_seurat_object <- "./data/Pan_neuro_integrated_FINAL.rds"
 output_figure_prefix <- "./figures/Figure_1DE/Barplot_DE_ND75KD_Control_all_annotations"
-output_file_prefix <- "./figures/Figure_1DE/List_DE_ND75KD_Control_all_annotations"
+output_file_prefix <- "./data/List_DE_ND75KD_Control_all_annotations"
 ```
 
 ## I. Reading Seurat object
