@@ -53,7 +53,7 @@ set.seed(42)
 
 ```{r}
 input_seurat_object <- "./data/Pan_neuro_integrated_FINAL.rds"
-output_figure_prefix <- "./figures/Figure_3C/Boxplot_Regulon_crc"
+output_figure_prefix <- "./figures/Figure_3C/Boxplot_Regulon_Atf6"
 ```
 
 ## I. Reading Seurat object
@@ -71,7 +71,7 @@ message(nrow(data.seurat), " genes were loaded")
 
 ```{r}
 # Extract the relevant data
-data.boxplot <- FetchData(data.seurat, vars = c("seurat_clusters", "SCENIC_crc_activating_regulon"))
+data.boxplot <- FetchData(data.seurat, vars = c("seurat_clusters", "SCENIC_Atf6_activating_regulon"))
 
 # Filter for clusters 2 and 23
 data.boxplot <- subset(data.boxplot, seurat_clusters %in% c(2, 23))
@@ -83,7 +83,7 @@ data.boxplot$seurat_clusters <- factor(data.boxplot$seurat_clusters, levels = c(
 # Statistical analysis
 
 ```{r}
-stats <- wilcox.test(data.boxplot$SCENIC_crc_activating_regulon[data.boxplot$seurat_clusters == 2], data.boxplot$SCENIC_crc_activating_regulon[data.boxplot$seurat_clusters == 23])
+stats <- wilcox.test(data.boxplot$SCENIC_Atf6_activating_regulon[data.boxplot$seurat_clusters == 2], data.boxplot$SCENIC_Atf6_activating_regulon[data.boxplot$seurat_clusters == 23])
 stats
 ```
 
@@ -98,16 +98,16 @@ significance_label <- ifelse( # This is ugly
                 ifelse(stats$p.value <= 0.01, "**", "*")))
 )
 
-p <- ggplot(data.boxplot, aes(x = seurat_clusters, y = SCENIC_crc_activating_regulon, fill = seurat_clusters)) +
+p <- ggplot(data.boxplot, aes(x = seurat_clusters, y = SCENIC_Atf6_activating_regulon, fill = seurat_clusters)) +
   geom_boxplot() +
   scale_fill_manual(values = clusterPalette) +
-  labs(y = "SCENIC_crc_activating_regulon") +
+  labs(y = "Atf6 regulon activity") +
   theme_minimal() +
   NoLegend() +
   geom_signif(size = 0.5, textsize = 4,
     comparisons = list(c("2", "23")), # Specify the clusters being compared
     annotations = significance_label, # Add star if significant
-    y_position = max(data.boxplot$SCENIC_crc_activating_regulon) + 0.05 * max(data.boxplot$SCENIC_crc_activating_regulon), # Position above the boxes
+    y_position = max(data.boxplot$SCENIC_Atf6_activating_regulon) + 0.05 * max(data.boxplot$SCENIC_Atf6_activating_regulon), # Position above the boxes
     tip_length = 0.02
   )
 p
