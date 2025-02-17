@@ -3,7 +3,7 @@ title: "Emma Pan Neuro (Control + ND75KD)"
 description: "Figure - DE genes between ND75KD and Control, by annotation"
 author: "Vincent Gardeux"
 date: "2025/01/15"
-updated: "2025/01/24"
+updated: "2025/01/14"
 output:
   html_document:
     df_print: paged
@@ -51,7 +51,7 @@ set.seed(42)
 
 ```{r}
 #input_seurat_object <- "./data/Pan_neuro_integrated_FINAL.rds"
-de_file <- "./figures/Figure_1D/List_DE_ND75KD_Control_all_annotations_overall_bulk.tsv"
+de_file <- "./data/List_DE_ND75KD_Control_all_annotations_overall_bulk.tsv"
 output_figure_prefix <- "./figures/Figure_1E/Volcano_Plot"
 ```
 
@@ -69,20 +69,22 @@ bulk.de_genes
 # Add required columns
 bulk.de_genes$neg_log10_p_val_adj <- -log10(bulk.de_genes$p_val_adj)
 bulk.de_genes$category <- "Non-significant"
-bulk.de_genes$category[bulk.de_genes$p_val_adj <= 0.05 & bulk.de_genes$avg_log2FC >= 1] <- "Upregulated"
-bulk.de_genes$category[bulk.de_genes$p_val_adj <= 0.05 & bulk.de_genes$avg_log2FC <= -1] <- "Downregulated"
+#bulk.de_genes$category[bulk.de_genes$p_val_adj <= 0.05 & bulk.de_genes$avg_log2FC >= 1] <- "Upregulated"
+#bulk.de_genes$category[bulk.de_genes$p_val_adj <= 0.05 & bulk.de_genes$avg_log2FC < -1] <- "Downregulated"
+bulk.de_genes$category[bulk.de_genes$p_val_adj <= 0.05 & bulk.de_genes$avg_log2FC >= 0] <- "Upregulated"
+bulk.de_genes$category[bulk.de_genes$p_val_adj <= 0.05 & bulk.de_genes$avg_log2FC < 0] <- "Downregulated"
 
 # Choose coloring
-colors.volcano <- c("Non-significant" = "grey", "Upregulated" = "red", "Downregulated" = "blue")
+colors.volcano <- c("Non-significant" = "lightgrey", "Upregulated" = "darkred", "Downregulated" = "darkblue")
 
 # Genes to annotate
-genes_to_label <- c("Ldh", "Obp99b", "ND-75", "FBti0063565", "Dro", "Dgp-1", "MFS3", "AttC", "y", "Arc1", "TotA", "Cyp4e3", "Mtk")
+genes_to_label <- c("Ldh", "Obp99b", "ND-75", "FBti0063565", "FBti0019466", "CG6654", "Dro", "Dgp-1", "MFS3", "AttC", "y", "Arc1", "TotA", "Cyp4e3", "Mtk")
 
 # Plot
 p <- ggplot(bulk.de_genes, aes(x = avg_log2FC, y = neg_log10_p_val_adj, color = category)) +
   geom_point(alpha = 0.7, size = 3) +
   scale_color_manual(values = colors.volcano) +
-  geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "black") +
+  #geom_vline(xintercept = c(-1, 1), linetype = "dashed", color = "black") +
   geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black") +
   labs(x = "Log2 Fold Change", y = "-Log10 Adjusted p-value", color = NULL) +
   theme_minimal() +
