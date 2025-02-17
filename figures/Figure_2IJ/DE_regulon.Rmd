@@ -111,8 +111,7 @@ df.nGenesByCluster$cluster <- factor(
 # Plot the number of DE genes by annotation as a bar plot
 p <- ggplot(df.nGenesByCluster, aes(x = cluster, y = Freq)) +
   geom_bar(stat = "identity") +
-  ylab("#DEGs marker regulons") +
-  labs(x = NULL) +
+  labs(x = NULL, y = "#DEGs marker regulons", title = "Nb DE regulons at FDR < 5%") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
         panel.grid.major.x = element_blank(), # Remove major vertical grid lines
@@ -144,8 +143,7 @@ df.nGenesByCluster$cluster <- factor(
 # Plot the number of DE genes by annotation as a bar plot
 p <- ggplot(df.nGenesByCluster, aes(x = cluster, y = Freq)) +
   geom_bar(stat = "identity") +
-  ylab("#DEGs marker regulons") +
-  labs(x = NULL) +
+  labs(x = NULL, y = "#DEGs marker regulons", title = "Nb DE regulons at FDR < 5% & abs(log2FC) > 1") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
         panel.grid.major.x = element_blank(), # Remove major vertical grid lines
@@ -161,8 +159,6 @@ p
 sima (p.5) and crc (p.19) are there, but with low fold change: sima(log2FC = 0.7389760) & crc(log2FC = 0.3106056)
 
 ```{r}
-#all.markers.2  <- FindMarkers(data.seurat, assay = "SCENIC", slot = "data", verbose = T, test.use = "LR", random.seed = 42, logfc.threshold = 0, min.pct = -Inf, latent.vars = "orig.ident", ident.1 = "2") # For unknown reasons Seuratv4 fails. So I use Seuratv5.
-#all.markers.2$gene <- rownames(all.markers.2)
 all.markers.2 <- subset(all.markers, cluster == "2")
 all.markers.2 <- all.markers.2[order(abs(all.markers.2$avg_log2FC), decreasing = T),]
 all.markers.2
@@ -183,7 +179,7 @@ all.markers.2$category[all.markers.2$p_val_adj <= 0.05 & all.markers.2$avg_log2F
 all.markers.2$category[all.markers.2$p_val_adj <= 0.05 & all.markers.2$avg_log2FC < 0 & all.markers.2$avg_log2FC >= -1] <- "Downregulated (low effect size)"
 
 # Choose coloring
-colors.volcano <- c("Non-significant" = "grey", 
+colors.volcano <- c("Non-significant" = "lightgrey", 
                     "Upregulated" = "darkblue", 
                     "Upregulated (low effect size)" = "lightblue",
                     "Downregulated" = "darkred", 
@@ -192,7 +188,7 @@ colors.volcano <- c("Non-significant" = "grey",
 # Genes to annotate
 genes_to_label <- c("sage", "Hr39", "Atf-2", "gt", "sima", "crc", "CG10348", "CG6808", 
                     "esg", "bowl", "NC2alpha", "su(Hw)", "Mtk", "ovo", "Myc", "odd", 
-                    "Mabi", "CG4374", "term", "CG1602")
+                    "Mabi", "CG4374", "term", "CG1602", "Atf6")
 
 # Plot
 p <- ggplot(all.markers.2, aes(x = avg_log2FC, y = neg_log10_p_val_adj, color = category)) +
@@ -210,8 +206,45 @@ p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "_cluster_2.pdf"), width = 7, height = 5, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "_cluster_2.png"), width = 7, height = 5, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "_cluster_2_5cat.pdf"), width = 7, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_cluster_2_5cat.png"), width = 7, height = 5, dpi = 1000, bg = 'white')
+```
+
+```{r, fig.width=8, fig.height=5}
+# Add required columns
+all.markers.2$neg_log10_p_val_adj <- -log10(all.markers.2$p_val_adj)
+all.markers.2$neg_log10_p_val_adj[is.infinite(all.markers.2$neg_log10_p_val_adj)] <- 300
+
+# Define categories
+all.markers.2$category <- "Non-significant"
+all.markers.2$category[all.markers.2$p_val_adj <= 0.05 & all.markers.2$avg_log2FC >= 0] <- "Upregulated"
+all.markers.2$category[all.markers.2$p_val_adj <= 0.05 & all.markers.2$avg_log2FC < 0] <- "Downregulated"
+
+# Choose coloring
+colors.volcano <- c("Non-significant" = "lightgrey", "Upregulated" = "darkblue", "Downregulated" = "darkred")
+
+# Genes to annotate
+genes_to_label <- c("sage", "Hr39", "Atf-2", "gt", "sima", "crc", "CG10348", "CG6808", 
+                    "esg", "bowl", "NC2alpha", "su(Hw)", "Mtk", "ovo", "Myc", "odd", 
+                    "Mabi", "CG4374", "term", "CG1602", "Atf6")
+
+# Plot
+p <- ggplot(all.markers.2, aes(x = avg_log2FC, y = neg_log10_p_val_adj, color = category)) +
+  geom_point(alpha = 0.7, size = 3) +
+  scale_color_manual(values = colors.volcano) +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black") +
+  labs(x = "Log2 Fold Change", y = "-Log10 Adjusted p-value", color = NULL) +
+  theme_minimal() +
+  geom_text_repel(data = subset(all.markers.2, regulon %in% genes_to_label), 
+                  aes(label = regulon), size = 4, segment.color = "black", 
+                  box.padding = 1, point.padding = 1, max.overlaps = 100)
+
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "_cluster_2_3cat.pdf"), width = 7, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_cluster_2_3cat.png"), width = 7, height = 5, dpi = 1000, bg = 'white')
 ```
 
 ```{r, fig.height = 5, fig.width = 15}
@@ -250,21 +283,29 @@ all.markers.23
 
 ## Volcano Plot
 
-```{r, fig.width=7, fig.height=5}
+```{r, fig.width=8, fig.height=5}
 # Add required columns
 all.markers.23$neg_log10_p_val_adj <- -log10(all.markers.23$p_val_adj)
 all.markers.23$neg_log10_p_val_adj[is.infinite(all.markers.23$neg_log10_p_val_adj)] <- 300
+
+# Define categories
 all.markers.23$category <- "Non-significant"
-all.markers.23$category[all.markers.23$p_val_adj <= 0.05 & all.markers.23$avg_log2FC >= 1] <- "Upregulated"
-all.markers.23$category[all.markers.23$p_val_adj <= 0.05 & all.markers.23$avg_log2FC <= -1] <- "Downregulated"
-all.markers.23$regulon <- gsub(x = all.markers.23$gene, pattern = "SCENIC-", replacement = "")
-all.markers.23$regulon <- gsub(x = all.markers.23$regulon, pattern = "-activating-regulon", replacement = "")
+all.markers.23$category[all.markers.23$p_val_adj <= 0.05 & all.markers.23$avg_log2FC > 1] <- "Upregulated"
+all.markers.23$category[all.markers.23$p_val_adj <= 0.05 & all.markers.23$avg_log2FC > 0 & all.markers.23$avg_log2FC <= 1] <- "Upregulated (low effect size)"
+all.markers.23$category[all.markers.23$p_val_adj <= 0.05 & all.markers.23$avg_log2FC < -1] <- "Downregulated"
+all.markers.23$category[all.markers.23$p_val_adj <= 0.05 & all.markers.23$avg_log2FC < 0 & all.markers.23$avg_log2FC >= -1] <- "Downregulated (low effect size)"
 
 # Choose coloring
-colors.volcano <- c("Non-significant" = "grey", "Upregulated" = "red", "Downregulated" = "blue")
+colors.volcano <- c("Non-significant" = "lightgrey", 
+                    "Upregulated" = "darkblue", 
+                    "Upregulated (low effect size)" = "lightblue",
+                    "Downregulated" = "darkred", 
+                    "Downregulated (low effect size)" = "lightcoral")
 
 # Genes to annotate
-genes_to_label <- c("CG5245", "CG9876", "CG33213", "p53", "Hey", "Myc", "dbr", "dany", "insv", "hkb", "Ssrp", "jumu", "hang", "gsb", "Hr39", "sage", "Atf-2", "gt", "sima", "crc", "CG6808", "esg", "bowl", "NC2alpha", "Myc", "odd", "term", "CG1602")
+genes_to_label <- c("sage", "Hr39", "Atf-2", "gt", "sima", "crc", "CG10348", "CG6808", 
+                    "esg", "bowl", "NC2alpha", "su(Hw)", "Mtk", "ovo", "Myc", "odd", 
+                    "Mabi", "CG4374", "term", "CG1602", "Atf6")
 
 # Plot
 p <- ggplot(all.markers.23, aes(x = avg_log2FC, y = neg_log10_p_val_adj, color = category)) +
@@ -274,13 +315,51 @@ p <- ggplot(all.markers.23, aes(x = avg_log2FC, y = neg_log10_p_val_adj, color =
   geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black") +
   labs(x = "Log2 Fold Change", y = "-Log10 Adjusted p-value", color = NULL) +
   theme_minimal() +
-  geom_text_repel(data = subset(all.markers.23, regulon %in% genes_to_label), aes(label = regulon), size = 4, segment.color = "black", box.padding = 1, point.padding = 1, max.overlaps = 100)
+  geom_text_repel(data = subset(all.markers.23, regulon %in% genes_to_label), 
+                  aes(label = regulon), size = 4, segment.color = "black", 
+                  box.padding = 1, point.padding = 1, max.overlaps = 100)
+
 p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "_cluster_23.pdf"), width = 7, height = 5, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "_cluster_23.png"), width = 7, height = 5, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "_cluster_23_5cat.pdf"), width = 7, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_cluster_23_5cat.png"), width = 7, height = 5, dpi = 1000, bg = 'white')
+```
+
+```{r, fig.width=8, fig.height=5}
+# Add required columns
+all.markers.23$neg_log10_p_val_adj <- -log10(all.markers.23$p_val_adj)
+all.markers.23$neg_log10_p_val_adj[is.infinite(all.markers.23$neg_log10_p_val_adj)] <- 300
+
+# Define categories
+all.markers.23$category <- "Non-significant"
+all.markers.23$category[all.markers.23$p_val_adj <= 0.05 & all.markers.23$avg_log2FC >= 0] <- "Upregulated"
+all.markers.23$category[all.markers.23$p_val_adj <= 0.05 & all.markers.23$avg_log2FC < 0] <- "Downregulated"
+
+# Choose coloring
+colors.volcano <- c("Non-significant" = "lightgrey", "Upregulated" = "darkblue", "Downregulated" = "darkred")
+
+# Genes to annotate
+genes_to_label <- c("CG5245", "CG9876", "CG33213", "p53", "Hey", "Myc", "dbr", "dany", "insv", "hkb", "Ssrp", "jumu", "hang", "gsb", "Hr39", "sage", "Atf-2", "gt", "sima", "crc", "CG6808", "esg", "bowl", "NC2alpha", "Myc", "odd", "term", "CG1602", "Atf6")
+
+# Plot
+p <- ggplot(all.markers.23, aes(x = avg_log2FC, y = neg_log10_p_val_adj, color = category)) +
+  geom_point(alpha = 0.7, size = 3) +
+  scale_color_manual(values = colors.volcano) +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "black") +
+  labs(x = "Log2 Fold Change", y = "-Log10 Adjusted p-value", color = NULL) +
+  theme_minimal() +
+  geom_text_repel(data = subset(all.markers.23, regulon %in% genes_to_label), 
+                  aes(label = regulon), size = 4, segment.color = "black", 
+                  box.padding = 1, point.padding = 1, max.overlaps = 100)
+
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "_cluster_23_3cat.pdf"), width = 7, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "_cluster_23_3cat.png"), width = 7, height = 5, dpi = 1000, bg = 'white')
 ```
 
 ```{r, fig.height = 5, fig.width = 15}
@@ -298,7 +377,6 @@ FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("p53", 
 ```{r, fig.height = 5, fig.width = 15}
 FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("bowl", "SCENIC_bowl_activating_regulon", "SCENIC_bowl_activating_regulon_binarized"), order = T, pt.size = 0.5, ncol = 3)
 ```
-
 
 ## VIII. Differentially activated regulons in Pan neuro CTRL (based on non-binarized data)
 
@@ -400,7 +478,7 @@ nd75kd.markers.2$regulon <- gsub(x = nd75kd.markers.2$regulon, pattern = "-activ
 colors.volcano <- c("Non-significant" = "grey", "Upregulated" = "red", "Downregulated" = "blue")
 
 # Genes to annotate
-genes_to_label <- c("sage", "Hr39", "Atf-2", "gt", "sima", "crc", "CG10348", "esg", "bowl", "ovo", "Mabi", "CG4374", "term", "CG1602", "CG14655", "nau", "eg")
+genes_to_label <- c("sage", "Hr39", "Atf-2", "gt", "sima", "crc", "CG10348", "esg", "bowl", "ovo", "Mabi", "CG4374", "term", "CG1602", "CG14655", "nau", "eg", "Atf6")
 
 # Plot
 p <- ggplot(nd75kd.markers.2, aes(x = avg_log2FC, y = neg_log10_p_val_adj, color = category)) +
@@ -446,7 +524,7 @@ nd75kd.markers.23$regulon <- gsub(x = nd75kd.markers.23$regulon, pattern = "-act
 colors.volcano <- c("Non-significant" = "grey", "Upregulated" = "red", "Downregulated" = "blue")
 
 # Genes to annotate
-genes_to_label <- c("CG5245", "CG9876", "CG33213", "p53", "Hey", "Myc", "dbr", "dany", "insv", "hkb", "gsb", "Hr39", "sage", "Atf-2", "gt", "sima", "crc", "CG6808", "esg", "bowl", "NC2alpha", "Myc", "odd", "term", "CG1602", "CG10348")
+genes_to_label <- c("CG5245", "CG9876", "CG33213", "p53", "Hey", "Myc", "dbr", "dany", "insv", "hkb", "gsb", "Hr39", "sage", "Atf-2", "gt", "sima", "crc", "CG6808", "esg", "bowl", "NC2alpha", "Myc", "odd", "term", "CG1602", "CG10348", "Atf6")
 
 # Plot
 p <- ggplot(nd75kd.markers.23, aes(x = avg_log2FC, y = neg_log10_p_val_adj, color = category)) +
