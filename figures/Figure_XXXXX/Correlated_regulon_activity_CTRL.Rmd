@@ -1,0 +1,136 @@
+---
+title: "Emma Pan Neuro (Control + ND75KD)"
+description: "Figure - Correlated regulon activity with Oxphos score, across all genes"
+author: "Vincent Gardeux"
+date: "2025/02/18"
+updated: "2025/02/18"
+output:
+  html_document:
+    df_print: paged
+---
+
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
+```
+
+## Libraries & functions
+
+First, I'm loading the required libraries & functions
+
+```{r}
+suppressPackageStartupMessages(library(Seurat, lib.loc = "/software/Seuratv4/lib/")) # Seurat v4.4.0, library for single-cell analysis
+suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/software/Seuratv4/lib/")) # For compatibility purpose
+suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
+suppressPackageStartupMessages(library(readxl)) # For reading xlsx files
+suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
+
+cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("SeuratObject"), "version", as.character(packageVersion("SeuratObject")), "\n")
+cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
+cat(bold("readxl"), "version", as.character(packageVersion("readxl")), "\n")
+
+# Random seed
+set.seed(42)
+```
+
+## Parameters
+
+```{r}
+input_seurat_object <- "./data/Pan_neuro_integrated_FINAL.rds"
+input_oxphos_genes <- "./data/Oxphos_genes.xlsx"
+input_gene_mapping <- "./data/features.tsv"
+input_tf_list <- "./data/FBgg0000745_TF_Flybase.filtered.txt"
+output_file_prefix <- "./figures/Figure_XXXXX/"
+```
+
+## I. Reading Seurat object
+
+First step is to read the Seurat objects, previously created
+
+```{r}
+message("Loading Seurat object...")
+data.seurat <- readRDS(input_seurat_object)
+
+# Filter only CTRL cells
+data.seurat <- data.seurat[,data.seurat$orig.ident == "Pan_neuro_control"]
+message(ncol(data.seurat), " cells were loaded")
+message(nrow(data.seurat), " genes were loaded")
+```
+
+# Compute correlation across all gene expression
+
+```{r}
+# Prepare
+data.regulons <- data.seurat@meta.data
+regulon.names <- names(data.regulons)
+regulon.names <- regulon.names[startsWith(regulon.names, prefix = "SCENIC") & endsWith(regulon.names, suffix = "regulon")]
+data.regulons <- data.regulons[regulon.names]
+correlation_data <- data.frame(regulon = regulon.names, gene = NA, cor = NA, p = NA, r2 = NA)
+rownames(correlation_data) <- correlation_data$regulon
+
+# Initialize progress bar
+num_regulons <- length(regulon.names)
+pb <- txtProgressBar(min = 0, max = num_regulons, style = 3)
+
+# Go through all genes
+for(i in 1:num_regulons){
+  regulon <- regulon.names[i]
+  
+  # Calculate correlation, p-value, and R²
+  cor_test <- suppressWarnings(cor.test(data.regulons[[regulon]], data.seurat$AUC_OXPHOS_68_Porcelli, method = "pearson"))
+  correlation_data[regulon, "cor"] <- cor_test$estimate
+  correlation_data[regulon, "p"] <- cor_test$p.value
+  correlation_data[regulon, "r2"] <- cor_test$estimate^2
+  correlation_data[regulon, "gene"] <- gsub(x = gsub(x = regulon, pattern = "_activating_regulon", replacement = ""), pattern = "SCENIC_", replacement = "")
+  
+  # Update progress bar
+  setTxtProgressBar(pb, i)
+}
+correlation_data <- correlation_data[-1,]
+
+# Close progress bar
+close(pb)
+
+# Sort by correlation
+correlation_data <- correlation_data[order(correlation_data$cor, decreasing = T),]
+correlation_data
+```
+
+```{r}
+# Read the Gene mapping
+data.gene_mapping <- fread(input_gene_mapping, sep = "\t", header = F, data.table = F)
+colnames(data.gene_mapping) <- c("Ensembl", "Gene", "Type")
+rownames(data.gene_mapping) <- data.gene_mapping$Gene
+data.gene_mapping
+```
+
+```{r}
+correlation_data$Ensembl <- data.gene_mapping[correlation_data$gene, "Ensembl"]
+correlation_data
+```
+
+```{r}
+# Read the Excel file
+data.oxphos <- read_excel(input_oxphos_genes, sheet = 1)
+data.oxphos
+```
+
+```{r}
+correlation_data$in_Oxphos_68_Porcelli_list <- correlation_data$Ensembl %in% data.oxphos$Gene_Ensembl_ID
+correlation_data
+```
+
+```{r}
+# Read the TF list
+data.tf_list <- fread(input_tf_list, sep = "\t", header = F, data.table = F)$V1
+correlation_data$is_in_TF_list <- correlation_data$gene %in% data.tf_list
+correlation_data
+```
+
+```{r}
+# Write the results
+fwrite(correlation_data, file = paste0(output_file_prefix, "regulon_activity_correlation_OXPHOS_68_Porcelli_CTRL.tsv"), quote = F, sep = "\t", row.names = F, col.names = T)
+```
+
