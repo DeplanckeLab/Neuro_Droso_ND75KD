@@ -1,9 +1,9 @@
 ---
 title: "Emma Pan Neuro (Control + ND75KD)"
-description: "Figure - DE genes between ND75KD and Control, by annotation"
+description: "Figure - DE regulons between ND75KD and Control, by annotation"
 author: "Vincent Gardeux"
 date: "2025/02/04"
-updated: "2025/02/04"
+updated: "2025/02/20"
 output:
   html_document:
     df_print: paged
@@ -52,7 +52,7 @@ set.seed(42)
 
 ```{r}
 input_seurat_object <- "./data/Pan_neuro_integrated_FINAL.rds"
-output_figure_prefix <- "./figures/Figure_1X/Volcano_plot_regulons"
+output_figure_prefix <- "./figures/Figure_2HI/Volcano_plot_regulons"
 SCENIC_regulons_path <- "./data/Pan_neuro_integrated_regulons_aucell.tsv"
 marker_regulon_output <- "./data/Pan_neuro_integrated_markers_regulons"
 ```
@@ -180,10 +180,10 @@ all.markers.2$category[all.markers.2$p_val_adj <= 0.05 & all.markers.2$avg_log2F
 
 # Choose coloring
 colors.volcano <- c("Non-significant" = "lightgrey", 
-                    "Upregulated" = "darkblue", 
-                    "Upregulated (low effect size)" = "lightblue",
-                    "Downregulated" = "darkred", 
-                    "Downregulated (low effect size)" = "lightcoral")
+                    "Downregulated" = "darkblue", 
+                    "Downregulated (low effect size)" = "lightblue",
+                    "Upregulated" = "darkred", 
+                    "Upregulated (low effect size)" = "lightcoral")
 
 # Genes to annotate
 genes_to_label <- c("sage", "Hr39", "Atf-2", "gt", "sima", "crc", "CG10348", "CG6808", 
@@ -221,7 +221,7 @@ all.markers.2$category[all.markers.2$p_val_adj <= 0.05 & all.markers.2$avg_log2F
 all.markers.2$category[all.markers.2$p_val_adj <= 0.05 & all.markers.2$avg_log2FC < 0] <- "Downregulated"
 
 # Choose coloring
-colors.volcano <- c("Non-significant" = "lightgrey", "Upregulated" = "darkblue", "Downregulated" = "darkred")
+colors.volcano <- c("Non-significant" = "lightgrey", "Upregulated" = "darkred", "Downregulated" = "darkblue")
 
 # Genes to annotate
 genes_to_label <- c("sage", "Hr39", "Atf-2", "gt", "sima", "crc", "CG10348", "CG6808", 
@@ -297,10 +297,10 @@ all.markers.23$category[all.markers.23$p_val_adj <= 0.05 & all.markers.23$avg_lo
 
 # Choose coloring
 colors.volcano <- c("Non-significant" = "lightgrey", 
-                    "Upregulated" = "darkblue", 
-                    "Upregulated (low effect size)" = "lightblue",
-                    "Downregulated" = "darkred", 
-                    "Downregulated (low effect size)" = "lightcoral")
+                    "Downregulated" = "darkblue", 
+                    "Downregulated (low effect size)" = "lightblue",
+                    "Upregulated" = "darkred", 
+                    "Upregulated (low effect size)" = "lightcoral")
 
 # Genes to annotate
 genes_to_label <- c("sage", "Hr39", "Atf-2", "gt", "sima", "crc", "CG10348", "CG6808", 
@@ -338,7 +338,7 @@ all.markers.23$category[all.markers.23$p_val_adj <= 0.05 & all.markers.23$avg_lo
 all.markers.23$category[all.markers.23$p_val_adj <= 0.05 & all.markers.23$avg_log2FC < 0] <- "Downregulated"
 
 # Choose coloring
-colors.volcano <- c("Non-significant" = "lightgrey", "Upregulated" = "darkblue", "Downregulated" = "darkred")
+colors.volcano <- c("Non-significant" = "lightgrey", "Upregulated" = "darkred", "Downregulated" = "darkblue")
 
 # Genes to annotate
 genes_to_label <- c("CG5245", "CG9876", "CG33213", "p53", "Hey", "Myc", "dbr", "dany", "insv", "hkb", "Ssrp", "jumu", "hang", "gsb", "Hr39", "sage", "Atf-2", "gt", "sima", "crc", "CG6808", "esg", "bowl", "NC2alpha", "Myc", "odd", "term", "CG1602", "Atf6")
@@ -475,7 +475,7 @@ nd75kd.markers.2$regulon <- gsub(x = nd75kd.markers.2$gene, pattern = "SCENIC-",
 nd75kd.markers.2$regulon <- gsub(x = nd75kd.markers.2$regulon, pattern = "-activating-regulon", replacement = "")
 
 # Choose coloring
-colors.volcano <- c("Non-significant" = "grey", "Upregulated" = "red", "Downregulated" = "blue")
+colors.volcano <- c("Non-significant" = "lightgrey", "Upregulated" = "darkred", "Downregulated" = "darkblue")
 
 # Genes to annotate
 genes_to_label <- c("sage", "Hr39", "Atf-2", "gt", "sima", "crc", "CG10348", "esg", "bowl", "ovo", "Mabi", "CG4374", "term", "CG1602", "CG14655", "nau", "eg", "Atf6")
@@ -521,7 +521,7 @@ nd75kd.markers.23$regulon <- gsub(x = nd75kd.markers.23$gene, pattern = "SCENIC-
 nd75kd.markers.23$regulon <- gsub(x = nd75kd.markers.23$regulon, pattern = "-activating-regulon", replacement = "")
 
 # Choose coloring
-colors.volcano <- c("Non-significant" = "grey", "Upregulated" = "red", "Downregulated" = "blue")
+colors.volcano <- c("Non-significant" = "lightgrey", "Upregulated" = "darkred", "Downregulated" = "darkblue")
 
 # Genes to annotate
 genes_to_label <- c("CG5245", "CG9876", "CG33213", "p53", "Hey", "Myc", "dbr", "dany", "insv", "hkb", "gsb", "Hr39", "sage", "Atf-2", "gt", "sima", "crc", "CG6808", "esg", "bowl", "NC2alpha", "Myc", "odd", "term", "CG1602", "CG10348", "Atf6")
