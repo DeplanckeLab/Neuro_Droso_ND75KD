@@ -302,6 +302,34 @@ DimPlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, group.by 
 DimPlot(data.seurat, reduction = "SCENICbinarizedtsne", pt.size = 0.5, group.by = "Neuron_category", cols = steinPalette)
 ```
 
+### Check Imp expression. It should be higher in Central Brain B
+
+```{r}
+# Prepare data
+imp_data <- data.frame(
+  Imp = as.vector(data.seurat@assays$RNA@data["Imp", ]),
+  Neuron_category = data.seurat$Neuron_category
+)
+
+# Plot
+ggplot(imp_data, aes(x = Neuron_category, y = Imp)) +
+  geom_boxplot() +
+  labs(
+    title = "Imp expression by Neuron category",
+    x = NULL,
+    y = "Imp normalized expression"
+  ) +
+  theme_minimal() +
+  stat_compare_means(
+    method = "wilcox",
+    comparisons = list(c("Central Brain A", "Central Brain B"), c("Central Brain A", "Optic lobe"), c("Central Brain A", "Glia"), c("Central Brain B", "Optic lobe"), c("Central Brain B", "Glia"), c("Optic lobe", "Glia")),
+    label = "p.signif",
+    label.x = 1.5
+  )
+
+```
+
+
 ## VI.1 Reading OXPHOS AUC values from AUCell (using the 117 OXPHOS genes from Flybase GO-BP GO:0006119 : oxidative phosphorylation)
 
 ```{r}
