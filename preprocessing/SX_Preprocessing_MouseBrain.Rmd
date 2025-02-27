@@ -1,0 +1,467 @@
+---
+title: "Emma Pan Neuro (Control + ND75KD) - Preprocessing MouseBrain data from Linnarsson et al."
+author: "Vincent Gardeux"
+date: "2025/02/19"
+last_modified: "2025/02/19"
+output:
+  html_document:
+    df_print: paged
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
+```
+
+## Libraries & functions
+
+First, I'm loading the required libraries & functions
+
+```{r}
+suppressPackageStartupMessages(library(Seurat, lib.loc = "/software/Seuratv4/lib/")) # Seurat v4.4.0, library for single-cell analysis
+suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/software/Seuratv4/lib/")) # For compatibility purpose
+suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
+suppressPackageStartupMessages(library(loomR)) # For building a file for ASAP
+suppressPackageStartupMessages(library(Matrix)) # For building a file for ASAP
+suppressPackageStartupMessages(library(ggplot2)) # For plotting
+suppressPackageStartupMessages(library(ggpubr)) # For grid plotting
+suppressPackageStartupMessages(library(plotly)) # For interactive plots
+suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
+
+cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("SeuratObject"), "version", as.character(packageVersion("SeuratObject")), "\n")
+cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
+cat(bold("loomR"), "version", as.character(packageVersion("loomR")), "\n")
+cat(bold("Matrix"), "version", as.character(packageVersion("Matrix")), "\n")
+cat(bold("ggplot2"), "version", as.character(packageVersion("ggplot2")), "\n")
+cat(bold("ggpubr"), "version", as.character(packageVersion("ggpubr")), "\n")
+cat(bold("plotly"), "version", as.character(packageVersion("plotly")), "\n")
+
+# Random seed
+set.seed(42)
+```
+
+## Parameters
+
+*Paper:*
+Molecular Architecture of the Mouse Nervous System
+Zeisel, Amit et al.
+Cell, Volume 174, Issue 4, 999 - 1014.e22
+
+*Data repo:* http://mousebrain.org/adolescent/downloads.html
+
+*Loom file:* https://storage.googleapis.com/linnarsson-lab-loom/l5_all_rev1.loom
+
+```{r}
+## Parameters
+input_loom <- "./data/l5_all_rev1.loom"
+input_Oxphos_133_AUCell_values_path <- "./data/Linnarsson_133_Oxphos_AUCell_auc.tsv"
+output_figure_prefix <- "./figures/Figure_5A/"
+```
+
+## I. Extracting information from Loom
+
+First step is to read the Loom file
+
+```{r}
+# Connect to the file
+ds <- connect(filename = input_loom, mode = "r") # r for read-only and r+ for read/write
+
+# Basic things
+cell_id = ds[["col_attrs/CellID"]][]
+ensembl = ds[["row_attrs/Accession"]][]
+genes = ds[["row_attrs/Gene"]][]
+
+# Retrieve metadata
+data.metadata <- data.frame(cellID = cell_id)
+for(col_attr in names(ds[["col_attrs"]])){
+  data.metadata[col_attr] <- ds[[paste0("col_attrs/", col_attr)]][]
+}
+
+# Close the file handle
+ds$close_all()
+
+data.metadata
+```
+
+Interesting metadata:
+- Class
+- Description
+- Region
+- Subclass
+- TaxonomyRank1
+- TaxonomyRank2
+- TaxonomyRank3
+- TaxonomyRank4
+- Taxonomy_group
+- Tissue
+
+```{r}
+p <- ggplot(data.metadata, aes(x = `_X`, y = `_Y`, color = Class)) + geom_point()
+p
+```
+
+## II.1 Reading OXPHOS AUC values from AUCell (using the 133 OXPHOS genes from KEGG Oxphos pathway https://www.genome.jp/entry/mmu00190)
+
+```{r}
+data.auc <- fread(input_Oxphos_133_AUCell_values_path, data.table = F)
+data.auc
+```
+
+QC
+
+```{r}
+all(data.auc$Cell == data.metadata$CellID)
+```
+
+## II.2 Adding AUC metadata
+
+```{r}
+data.metadata$AUC_OXPHOS_133_KEGG <- data.auc$AUC
+hist(data.metadata$AUC_OXPHOS_133_KEGG, breaks = 100)
+```
+
+## Boxplot
+
+```{r, fig.width=5,fig.height=7}
+boxplot_data <- data.metadata
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$Class %in% names(which(table(boxplot_data$Class) >= 5)),]
+
+# Filter out artefact & unnanotated
+boxplot_data <- boxplot_data[!boxplot_data$Class %in% c("unannotated", "artefact"),]
+
+# Calculating median values of "AUC_OXPHOS_68_Porcelli" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_133_KEGG, boxplot_data$Class, median)
+
+# Sorting the metadata based on median values
+boxplot_data$Class <- factor(boxplot_data$Class, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = Class, y = AUC_OXPHOS_133_KEGG, fill = Class)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_OXPHOS_133_KEGG") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_Class.pdf"), width = 5, height = 7, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_Class.png"), width = 5, height = 7, dpi = 1000, bg = 'white')
+```
+
+## Boxplot
+
+```{r, fig.width=15,fig.height=7}
+boxplot_data <- data.metadata
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$Description %in% names(which(table(boxplot_data$Description) >= 5)),]
+
+# Filter out artefact & unnanotated
+boxplot_data <- boxplot_data[!boxplot_data$Description %in% c("unannotated", "artefact"),]
+
+# Calculating median values of "AUC_OXPHOS_68_Porcelli" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_133_KEGG, boxplot_data$Description, median)
+
+# Sorting the metadata based on median values
+boxplot_data$Description <- factor(boxplot_data$Description, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = Description, y = AUC_OXPHOS_133_KEGG, fill = Description)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_OXPHOS_133_KEGG") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_Description.pdf"), width = 15, height = 7, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_Description.png"), width = 15, height = 7, dpi = 1000, bg = 'white')
+```
+
+## Boxplot
+
+```{r, fig.width=10,fig.height=7}
+boxplot_data <- data.metadata
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$Region %in% names(which(table(boxplot_data$Region) >= 5)),]
+
+# Filter out artefact & unnanotated
+boxplot_data <- boxplot_data[!boxplot_data$Region %in% c("unannotated", "artefact"),]
+
+# Calculating median values of "AUC_OXPHOS_68_Porcelli" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_133_KEGG, boxplot_data$Region, median)
+
+# Sorting the metadata based on median values
+boxplot_data$Region <- factor(boxplot_data$Region, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = Region, y = AUC_OXPHOS_133_KEGG, fill = Region)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_OXPHOS_133_KEGG") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_Region.pdf"), width = 10, height = 7, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_Region.png"), width = 10, height = 7, dpi = 1000, bg = 'white')
+```
+
+## Boxplot
+
+```{r, fig.width=8,fig.height=5}
+boxplot_data <- data.metadata
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$Subclass %in% names(which(table(boxplot_data$Subclass) >= 5)),]
+
+# Filter out artefact & unnanotated
+boxplot_data <- boxplot_data[!boxplot_data$Subclass %in% c("unannotated", "artefact"),]
+
+# Calculating median values of "AUC_OXPHOS_68_Porcelli" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_133_KEGG, boxplot_data$Subclass, median)
+
+# Sorting the metadata based on median values
+boxplot_data$Subclass <- factor(boxplot_data$Subclass, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = Subclass, y = AUC_OXPHOS_133_KEGG, fill = Subclass)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_OXPHOS_133_KEGG") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_Subclass.pdf"), width = 8, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_Subclass.png"), width = 8, height = 5, dpi = 1000, bg = 'white')
+```
+
+## Boxplot
+
+```{r, fig.width=8,fig.height=5}
+boxplot_data <- data.metadata
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$TaxonomyRank1 %in% names(which(table(boxplot_data$TaxonomyRank1) >= 5)),]
+
+# Filter out artefact & unnanotated
+boxplot_data <- boxplot_data[!boxplot_data$TaxonomyRank1 %in% c("unannotated", "artefact"),]
+
+# Calculating median values of "AUC_OXPHOS_68_Porcelli" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_133_KEGG, boxplot_data$TaxonomyRank1, median)
+
+# Sorting the metadata based on median values
+boxplot_data$TaxonomyRank1 <- factor(boxplot_data$TaxonomyRank1, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = TaxonomyRank1, y = AUC_OXPHOS_133_KEGG, fill = TaxonomyRank1)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_OXPHOS_133_KEGG") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_TaxonomyRank1.pdf"), width = 8, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_TaxonomyRank1.png"), width = 8, height = 5, dpi = 1000, bg = 'white')
+```
+
+## Boxplot
+
+```{r, fig.width=8,fig.height=5}
+boxplot_data <- data.metadata
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$TaxonomyRank2 %in% names(which(table(boxplot_data$TaxonomyRank2) >= 5)),]
+
+# Filter out artefact & unnanotated
+boxplot_data <- boxplot_data[!boxplot_data$TaxonomyRank2 %in% c("unannotated", "artefact"),]
+
+# Calculating median values of "AUC_OXPHOS_68_Porcelli" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_133_KEGG, boxplot_data$TaxonomyRank2, median)
+
+# Sorting the metadata based on median values
+boxplot_data$TaxonomyRank2 <- factor(boxplot_data$TaxonomyRank2, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = TaxonomyRank2, y = AUC_OXPHOS_133_KEGG, fill = TaxonomyRank2)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_OXPHOS_133_KEGG") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_TaxonomyRank2.pdf"), width = 8, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_TaxonomyRank2.png"), width = 8, height = 5, dpi = 1000, bg = 'white')
+```
+
+## Boxplot
+
+```{r, fig.width=8,fig.height=5}
+boxplot_data <- data.metadata
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$TaxonomyRank3 %in% names(which(table(boxplot_data$TaxonomyRank3) >= 5)),]
+
+# Filter out artefact & unnanotated
+boxplot_data <- boxplot_data[!boxplot_data$TaxonomyRank3 %in% c("unannotated", "artefact"),]
+
+# Calculating median values of "AUC_OXPHOS_68_Porcelli" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_133_KEGG, boxplot_data$TaxonomyRank3, median)
+
+# Sorting the metadata based on median values
+boxplot_data$TaxonomyRank3 <- factor(boxplot_data$TaxonomyRank3, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = TaxonomyRank3, y = AUC_OXPHOS_133_KEGG, fill = TaxonomyRank3)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_OXPHOS_133_KEGG") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_TaxonomyRank3.pdf"), width = 8, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_TaxonomyRank3.png"), width = 8, height = 5, dpi = 1000, bg = 'white')
+```
+
+## Boxplot
+
+```{r, fig.width=8,fig.height=5}
+boxplot_data <- data.metadata
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$TaxonomyRank4 %in% names(which(table(boxplot_data$TaxonomyRank4) >= 5)),]
+
+# Filter out artefact & unnanotated
+boxplot_data <- boxplot_data[!boxplot_data$TaxonomyRank4 %in% c("unannotated", "artefact"),]
+
+# Calculating median values of "AUC_OXPHOS_68_Porcelli" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_133_KEGG, boxplot_data$TaxonomyRank4, median)
+
+# Sorting the metadata based on median values
+boxplot_data$TaxonomyRank4 <- factor(boxplot_data$TaxonomyRank4, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = TaxonomyRank4, y = AUC_OXPHOS_133_KEGG, fill = TaxonomyRank4)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_OXPHOS_133_KEGG") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_TaxonomyRank4.pdf"), width = 8, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_TaxonomyRank4.png"), width = 8, height = 5, dpi = 1000, bg = 'white')
+```
+
+## Boxplot
+
+```{r, fig.width=8,fig.height=5}
+boxplot_data <- data.metadata
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$Taxonomy_group %in% names(which(table(boxplot_data$Taxonomy_group) >= 5)),]
+
+# Filter out artefact & unnanotated
+boxplot_data <- boxplot_data[!boxplot_data$Taxonomy_group %in% c("unannotated", "artefact"),]
+
+# Calculating median values of "AUC_OXPHOS_68_Porcelli" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_133_KEGG, boxplot_data$Taxonomy_group, median)
+
+# Sorting the metadata based on median values
+boxplot_data$Taxonomy_group <- factor(boxplot_data$Taxonomy_group, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = Taxonomy_group, y = AUC_OXPHOS_133_KEGG, fill = Taxonomy_group)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_OXPHOS_133_KEGG") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_Taxonomy_group.pdf"), width = 8, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_Taxonomy_group.png"), width = 8, height = 5, dpi = 1000, bg = 'white')
+```
+
+## Boxplot
+
+```{r, fig.width=8,fig.height=5}
+boxplot_data <- data.metadata
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$Tissue %in% names(which(table(boxplot_data$Tissue) >= 5)),]
+
+# Filter out artefact & unnanotated
+boxplot_data <- boxplot_data[!boxplot_data$Tissue %in% c("unannotated", "artefact"),]
+
+# Calculating median values of "AUC_OXPHOS_68_Porcelli" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_133_KEGG, boxplot_data$Tissue, median)
+
+# Sorting the metadata based on median values
+boxplot_data$Tissue <- factor(boxplot_data$Tissue, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = Tissue, y = AUC_OXPHOS_133_KEGG, fill = Tissue)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_OXPHOS_133_KEGG") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_Tissue.pdf"), width = 8, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_Tissue.png"), width = 8, height = 5, dpi = 1000, bg = 'white')
+```
+
+<!-- message("Loading KEGG pathway...") -->
+<!-- data.kegg <- fread("./data/oxphos_genes_KEGG.txt", header = F, data.table = F)$V1 -->
+
+<!-- sum(data.kegg %in% genes) # 113 -->
+
+<!-- sum(!data.kegg %in% genes) # 28 -->
+<!-- # Ndufs6b: ENSMUSG00000083820 -->
+<!-- # Gm19340: ENSMUSG00000113745 -->
+<!-- # Ndufab1-ps: ENSMUSG00000091989 -->
+<!-- # Ndufb1: ENSMUSG00000113902 -->
+<!-- # Ndufb4c: ENSMUSG00000083380 -->
+<!-- # Ndufb4b: ENSMUSG00000120425 -->
+<!-- # Gm6293: ENSMUSG00000051133 -->
+<!-- # Gm11633: ENSMUSG00000082715 -->
+<!-- # Atp5f1a: ENSMUSG00000025428 -> Atp5a1 -->
+<!-- # Atp5f1b: ENSMUSG00000025393 -> Atp5b -->
+<!-- # Atp5f1c: ENSMUSG00000025781 -> Atp5c1 -->
+<!-- # Atp5f1d: ENSMUSG00000003072 -> Atp5d -->
+<!-- # Atp5f1e: ENSMUSG00000016252 -> Atp5e -->
+<!-- # Atp5po: ENSMUSG00000022956 -> Atp5o -->
+<!-- # ... -->
+<!-- c("ENSMUSG00000083820", "ENSMUSG00000113745", "ENSMUSG00000091989", "ENSMUSG00000113902", "ENSMUSG00000083380", "ENSMUSG00000120425", "ENSMUSG00000051133", "ENSMUSG00000082715") %in% ensembl -->
+
+<!-- data.kegg[! data.kegg %in% genes] -->

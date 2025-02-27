@@ -1,0 +1,203 @@
+---
+title: "Emma Pan Neuro (Control + ND75KD) - Preprocessing GSE243639 from Martirosyan et al."
+author: "Vincent Gardeux"
+date: "2025/02/27"
+last_modified: "2025/02/27"
+output:
+  html_document:
+    df_print: paged
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
+```
+
+## Libraries & functions
+
+First, I'm loading the required libraries & functions
+
+```{r}
+suppressPackageStartupMessages(library(Seurat, lib.loc = "/software/Seuratv4/lib/")) # Seurat v4.4.0, library for single-cell analysis
+suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/software/Seuratv4/lib/")) # For compatibility purpose
+suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
+suppressPackageStartupMessages(library(readxl)) # For writing DE gene file
+suppressPackageStartupMessages(library(loomR)) # For building a file for ASAP
+suppressPackageStartupMessages(library(Matrix)) # For building a file for ASAP
+suppressPackageStartupMessages(library(ggplot2)) # For plotting
+suppressPackageStartupMessages(library(ggpubr)) # For grid plotting
+suppressPackageStartupMessages(library(plotly)) # For interactive plots
+suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
+
+cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("SeuratObject"), "version", as.character(packageVersion("SeuratObject")), "\n")
+cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
+cat(bold("readxl"), "version", as.character(packageVersion("readxl")), "\n")
+cat(bold("loomR"), "version", as.character(packageVersion("loomR")), "\n")
+cat(bold("Matrix"), "version", as.character(packageVersion("Matrix")), "\n")
+cat(bold("ggplot2"), "version", as.character(packageVersion("ggplot2")), "\n")
+cat(bold("ggpubr"), "version", as.character(packageVersion("ggpubr")), "\n")
+cat(bold("plotly"), "version", as.character(packageVersion("plotly")), "\n")
+
+# Random seed
+set.seed(42)
+```
+
+## Parameters
+
+*Paper:*
+Unravelling cell type-specific responses to Parkinson’s Disease at single cell resolution
+Martirosyan et al.
+Mol Neurodegeneration 19, 7 (2024)
+https://molecularneurodegeneration.biomedcentral.com/articles/10.1186/s13024-023-00699-0
+
+*Data repo:* https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE243639
+
+*Loom file:* NA
+
+```{r}
+## Parameters
+input_matrix <- "./data/Martirosyan_2024/GSE243639_Filtered_count_table.csv.gz"
+input_metadata <- "./data/Martirosyan_2024/GSE243639_UMAP_coordinates.xlsx"
+input_Oxphos_135_AUCell_values_path <- "./data/Martirosyan_135_Oxphos_AUCell_auc.tsv"
+output_figure_prefix <- "./figures/Figure_5A/"
+```
+
+## I. Loading dataset
+
+### I.1. Reading count matrix from csv
+
+I don't need this.
+
+```{r}
+#data.matrix <- fread(input_matrix, header = T, stringsAsFactors = F, showProgress = F, sep = ",", data.table = F, check.names = F)
+#rownames(data.matrix) <- data.matrix$V1
+#data.matrix <- data.matrix[,-1]
+#data.matrix
+```
+
+### I.2. Reading metadata from Excel file
+
+```{r}
+data.metadata <- as.data.frame(read_xlsx(path = input_metadata, sheet = 1))
+rownames(data.metadata) <- data.metadata$CELL_ID
+data.metadata$UMAP_1 <- as.numeric(data.metadata$UMAP_1)
+data.metadata$UMAP_2 <- as.numeric(data.metadata$UMAP_2)
+data.metadata
+```
+
+```{r}
+data.neurons <- as.data.frame(read_xlsx(path = input_metadata, sheet = "Neurons"))
+rownames(data.neurons) <- data.neurons$CELL_ID
+data.neurons$UMAP_1 <- as.numeric(data.neurons$UMAP_1)
+data.neurons$UMAP_2 <- as.numeric(data.neurons$UMAP_2)
+data.neurons
+```
+
+Interesting metadata:
+- IDENT
+
+```{r}
+p <- ggplot(data.metadata, aes(x = UMAP_1, y = UMAP_2, color = IDENT)) + geom_point()
+p
+```
+
+```{r}
+p <- ggplot(data.neurons, aes(x = UMAP_1, y = UMAP_2, color = IDENT)) + geom_point()
+p
+```
+
+## II.1 Reading OXPHOS AUC values from AUCell (using the 133 OXPHOS genes from KEGG Oxphos pathway https://www.genome.jp/entry/mmu00190)
+
+```{r}
+data.auc <- fread(input_Oxphos_135_AUCell_values_path, data.table = F, check.names = F)
+rownames(data.auc) <- data.auc$Cell
+data.auc
+```
+
+QC
+
+```{r}
+all(data.auc$Cell == data.metadata$CellID)
+```
+
+## II.2 Adding AUC metadata
+
+```{r}
+data.metadata[rownames(data.auc), "AUC_OXPHOS_135_KEGG"] <- data.auc$AUC
+hist(data.metadata$AUC_OXPHOS_135_KEGG, breaks = 100)
+```
+
+## Boxplot
+
+```{r, fig.width=5,fig.height=7}
+boxplot_data <- data.metadata
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Filter out artefact & unnanotated
+boxplot_data <- boxplot_data[!boxplot_data$IDENT %in% c("unannotated", "artefact"),]
+
+# Calculating median values of "AUC_OXPHOS_68_Porcelli" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_135_KEGG, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = AUC_OXPHOS_135_KEGG, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_OXPHOS_135_KEGG") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_135_Oxphos_AUCell_ordered_boxplot_IDENT.pdf"), width = 5, height = 7, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_135_Oxphos_AUCell_ordered_boxplot_IDENT.png"), width = 5, height = 7, dpi = 1000, bg = 'white')
+```
+
+## III Subsetting to only neurons
+
+```{r}
+neuron.cells <- rownames(data.neurons)[rownames(data.neurons) %in% rownames(data.auc)]
+data.neurons[neuron.cells, "AUC_OXPHOS_135_KEGG"] <- data.auc[neuron.cells, "AUC"]
+hist(data.neurons$AUC_OXPHOS_135_KEGG, breaks = 100)
+```
+
+## Boxplot
+
+```{r, fig.width=5,fig.height=7}
+boxplot_data <- data.neurons
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Filter out artefact & unnanotated
+boxplot_data <- boxplot_data[!boxplot_data$IDENT %in% c("unannotated", "artefact"),]
+
+# Calculating median values of "AUC_OXPHOS_68_Porcelli" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_135_KEGG, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = AUC_OXPHOS_135_KEGG, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_OXPHOS_135_KEGG") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_IDENT_Neurons.pdf"), width = 5, height = 7, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_IDENT_Neurons.png"), width = 5, height = 7, dpi = 1000, bg = 'white')
+```
+
+
