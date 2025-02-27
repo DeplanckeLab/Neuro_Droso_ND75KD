@@ -39,7 +39,7 @@ cat(bold("plotly"), "version", as.character(packageVersion("plotly")), "\n")
 
 # Color-blind friendly palette 3-colors
 cbPalette <- c("#E69F00", "#000000", "#56B4E9")
-steinPalette <- c("#80C980", "#BDADD4", "#376CB0", "#FBBF85", "#F0027E")
+steinPalette <- c(`Central Brain A`="#80C980",`Central Brain B`="#BDADD4",`Optic lobe`="#376CB0",`Glia`="#FBBF85",`Other`="#F0027E")
 
 # Random seed
 set.seed(42)
@@ -312,21 +312,29 @@ imp_data <- data.frame(
 )
 
 # Plot
-ggplot(imp_data, aes(x = Neuron_category, y = Imp)) +
+ggplot(imp_data, aes(x = Neuron_category, y = Imp, fill = Neuron_category)) +
   geom_boxplot() +
+  stat_summary(fun = "mean", geom = "point", shape = 18, size = 3, color = "black", fill = "white") + # Display mean points
   labs(
     title = "Imp expression by Neuron category",
     x = NULL,
     y = "Imp normalized expression"
   ) +
+  scale_fill_manual(values = steinPalette) +  # Apply color palette
   theme_minimal() +
   stat_compare_means(
     method = "wilcox",
-    comparisons = list(c("Central Brain A", "Central Brain B"), c("Central Brain A", "Optic lobe"), c("Central Brain A", "Glia"), c("Central Brain B", "Optic lobe"), c("Central Brain B", "Glia"), c("Optic lobe", "Glia")),
+    comparisons = list(
+      c("Central Brain A", "Central Brain B"), 
+      c("Central Brain A", "Optic lobe"), 
+      c("Central Brain A", "Glia"), 
+      c("Central Brain B", "Optic lobe"), 
+      c("Central Brain B", "Glia"), 
+      c("Optic lobe", "Glia")
+    ),
     label = "p.signif",
     label.x = 1.5
   )
-
 ```
 
 
