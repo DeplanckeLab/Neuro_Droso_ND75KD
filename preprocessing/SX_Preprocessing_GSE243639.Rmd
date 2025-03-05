@@ -1,8 +1,8 @@
 ---
-title: "Emma Pan Neuro (Control + ND75KD) - Preprocessing GSE243639 from Martirosyan et al."
+title: "Emma Pan Neuro (Control + ND75KD) - Preprocessing and plotting GSE243639 from Martirosyan et al."
 author: "Vincent Gardeux"
 date: "2025/02/27"
-last_modified: "2025/02/27"
+last_modified: "2025/03/04"
 output:
   html_document:
     df_print: paged
@@ -60,23 +60,47 @@ https://molecularneurodegeneration.biomedcentral.com/articles/10.1186/s13024-023
 input_matrix <- "./data/Martirosyan_2024/GSE243639_Filtered_count_table.csv.gz"
 input_metadata <- "./data/Martirosyan_2024/GSE243639_UMAP_coordinates.xlsx"
 input_Oxphos_135_AUCell_values_path <- "./data/Martirosyan_135_Oxphos_AUCell_auc.tsv"
+input_UPR_93_AUCell_values_path <- "./data/Martirosyan_93_UPR_AUCell_auc.tsv"
 output_figure_prefix <- "./figures/Figure_5A/"
 ```
 
 ## I. Loading dataset
 
-### I.1. Reading count matrix from csv
-
-I don't need this.
+### I.1. Reading count matrix from csv provided by authors on GEO
 
 ```{r}
-#data.matrix <- fread(input_matrix, header = T, stringsAsFactors = F, showProgress = F, sep = ",", data.table = F, check.names = F)
-#rownames(data.matrix) <- data.matrix$V1
-#data.matrix <- data.matrix[,-1]
-#data.matrix
+data.matrix <- fread(input_matrix, header = T, stringsAsFactors = F, showProgress = F, sep = ",", data.table = F, check.names = F)
+rownames(data.matrix) <- data.matrix$V1
+data.matrix <- data.matrix[,-1]
 ```
 
-### I.2. Reading metadata from Excel file
+### I.2. Build Seurat object
+
+```{r}
+# Build a Seurat object with this data
+data.seurat <- CreateSeuratObject(data.matrix, project = "Martirosyan")
+
+# Restore hyphens in cell barcodes
+data.seurat <- RenameCells(data.seurat, new.names = gsub(pattern = ".1$", replacement = "-1", x = colnames(data.seurat)))
+
+# Change identity
+data.seurat$orig.ident.parsed <- data.seurat$orig.ident
+data.seurat$orig.ident <- "Martirosyan"
+data.seurat <- SetIdent(data.seurat, value = "orig.ident")
+
+# Add MT content
+data.seurat[["percent.mt"]] <- PercentageFeatureSet(data.seurat, pattern = "^MT-")
+
+# Run default Normalization
+data.seurat <- NormalizeData(data.seurat, normalization.method = "LogNormalize", scale.factor = 10000)
+```
+
+```{r}
+# Visualize QC metrics as a violin plot
+VlnPlot(data.seurat, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+```
+
+### I.3. Reading global metadata from authors
 
 ```{r}
 data.metadata <- as.data.frame(read_xlsx(path = input_metadata, sheet = 1))
@@ -86,6 +110,242 @@ data.metadata$UMAP_2 <- as.numeric(data.metadata$UMAP_2)
 data.metadata
 ```
 
+## I.4 Reading OXPHOS AUC values from AUCell (using the 133 OXPHOS genes from KEGG Oxphos pathway https://www.genome.jp/entry/mmu00190)
+
+```{r}
+data.auc.oxphos <- fread(input_Oxphos_135_AUCell_values_path, data.table = F, check.names = F)
+rownames(data.auc.oxphos) <- data.auc.oxphos$Cell
+data.auc.oxphos
+```
+
+
+## I.5  Reading UPR AUC values from AUCell (using the 93 UPR genes from REACTOME
+
+```{r}
+data.auc.upr <- fread(input_UPR_93_AUCell_values_path, data.table = F, check.names = F)
+rownames(data.auc.upr) <- data.auc.upr$Cell
+data.auc.upr
+```
+
+## I.6 Add to Seurat Object
+
+```{r}
+# Add metadata
+data.seurat$AUC_OXPHOS_135_KEGG <- data.auc.oxphos[colnames(data.seurat), "AUC"]
+data.seurat$AUC_UPR_93_REACTOME <- data.auc.upr[colnames(data.seurat), "AUC"]
+data.seurat$CLUSTER <- data.metadata[colnames(data.seurat), "CLUSTER"]
+data.seurat$IDENT <- data.metadata[colnames(data.seurat), "IDENT"]
+
+# Add UMAP
+data.seurat[["UMAP"]] <- CreateDimReducObject(embeddings = as.matrix(data.metadata[,c("UMAP_1", "UMAP_2")]), key = "UMAP_", assay = "RNA")
+```
+
+## II Plot interesting stuff
+
+### II.1 Plot author's UMAP
+
+```{r}
+DimPlot(data.seurat, reduction = "UMAP", group.by = "IDENT")
+```
+
+```{r}
+DimPlot(data.seurat, reduction = "UMAP", group.by = "CLUSTER")
+```
+
+### II.2.a Plot Distribution OXPHOS
+
+```{r}
+hist(data.seurat$AUC_OXPHOS_135_KEGG, breaks = 100)
+```
+
+### II.2.b Plot Boxplot OXPHOS
+
+```{r, fig.width=5,fig.height=5}
+boxplot_data <- data.seurat@meta.data
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "AUC_OXPHOS_135_KEGG" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_135_KEGG, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = AUC_OXPHOS_135_KEGG, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_OXPHOS_135_KEGG") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_135_Oxphos_AUCell_ordered_boxplot_IDENT.pdf"), width = 5, height = 5, bg = "white")
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_135_Oxphos_AUCell_ordered_boxplot_IDENT.png"), width = 5, height = 5, dpi = 1000, bg = 'white')
+```
+
+### II.2.c Plot UMAP OXPHOS
+
+```{r}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "AUC_OXPHOS_135_KEGG")
+```
+
+### II.3.a Plot Distribution UPR
+
+```{r}
+hist(data.seurat$AUC_UPR_93_REACTOME, breaks = 100)
+```
+
+### II.3.b Plot Boxplot UPR
+
+```{r, fig.width=5,fig.height=5}
+boxplot_data <- data.seurat@meta.data
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "AUC_UPR_93_REACTOME" for each group
+median_values <- tapply(boxplot_data$AUC_UPR_93_REACTOME, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = AUC_UPR_93_REACTOME, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_UPR_93_REACTOME") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_93_UPR_AUCell_ordered_boxplot_IDENT.pdf"), width = 5, height = 5, bg = "white")
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_93_UPR_AUCell_ordered_boxplot_IDENT.png"), width = 5, height = 5, dpi = 1000, bg = 'white')
+```
+
+### II.3.c Plot UMAP UPR
+
+```{r}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "AUC_UPR_93_REACTOME")
+```
+
+### II.4.a Plot Boxplot HSP90AA1
+
+```{r, fig.width=5,fig.height=5}
+boxplot_data <- data.seurat@meta.data
+boxplot_data$HSP90AA1 <- data.seurat@assays$RNA@data["HSP90AA1",]
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "HSP90AA1" for each group
+median_values <- tapply(boxplot_data$HSP90AA1, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = HSP90AA1, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "HSP90AA1 Normalized expression") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_HSP90AA1_ordered_boxplot_IDENT.pdf"), width = 5, height = 5, bg = "white")
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_HSP90AA1_ordered_boxplot_IDENT.png"), width = 5, height = 5, dpi = 1000, bg = 'white')
+```
+
+### II.4.b Plot UMAP HSP90AA1
+
+```{r}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "HSP90AA1")
+```
+
+### II.5.a Plot Boxplot HSPA8
+
+```{r, fig.width=5,fig.height=5}
+boxplot_data <- data.seurat@meta.data
+boxplot_data$HSPA8 <- data.seurat@assays$RNA@data["HSPA8",]
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "HSPA8" for each group
+median_values <- tapply(boxplot_data$HSPA8, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = HSPA8, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "HSPA8 Normalized expression") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_HSPA8_ordered_boxplot_IDENT.pdf"), width = 5, height = 5, bg = "white")
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_HSPA8_ordered_boxplot_IDENT.png"), width = 5, height = 5, dpi = 1000, bg = 'white')
+```
+
+### II.5.b Plot UMAP HSPA8
+
+```{r}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "HSPA8")
+```
+
+### II.6.a Plot Boxplot ATF4
+
+```{r, fig.width=5,fig.height=5}
+boxplot_data <- data.seurat@meta.data
+boxplot_data$ATF4 <- data.seurat@assays$RNA@data["ATF4",]
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "ATF4" for each group
+median_values <- tapply(boxplot_data$ATF4, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = ATF4, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "ATF4 Normalized expression") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_ATF4_ordered_boxplot_IDENT.pdf"), width = 5, height = 5, bg = "white")
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_ATF4_ordered_boxplot_IDENT.png"), width = 5, height = 5, dpi = 1000, bg = 'white')
+```
+
+### II.6.b Plot UMAP ATF4
+
+```{r}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "ATF4")
+```
+
+## III Subsetting to only neurons
+
+### III.1 Read metadata from authors
+
 ```{r}
 data.neurons <- as.data.frame(read_xlsx(path = input_metadata, sheet = "Neurons"))
 rownames(data.neurons) <- data.neurons$CELL_ID
@@ -94,52 +354,50 @@ data.neurons$UMAP_2 <- as.numeric(data.neurons$UMAP_2)
 data.neurons
 ```
 
-Interesting metadata:
-- IDENT
+Authors have subset their dataset and redo a UMAP and clustering on the subset dataset.
+
+### III.1 Subset the Seurat object
 
 ```{r}
-p <- ggplot(data.metadata, aes(x = UMAP_1, y = UMAP_2, color = IDENT)) + geom_point()
-p
+# Subset to neuron cells from metadata
+neuron.cells <- rownames(data.neurons)[rownames(data.neurons) %in% colnames(data.seurat)]
+data.seurat <- subset(data.seurat, cells = neuron.cells)
+
+# Add/replace new metadata
+data.seurat$CLUSTER <- data.neurons[colnames(data.seurat), "CLUSTER"]
+data.seurat$IDENT <- data.neurons[colnames(data.seurat), "IDENT"]
+
+# Add UMAP
+data.seurat[["UMAP"]] <- CreateDimReducObject(embeddings = as.matrix(data.neurons[,c("UMAP_1", "UMAP_2")]), key = "UMAP_", assay = "RNA")
+```
+
+## IV Plot interesting stuff
+
+### IV.1 Plot author's UMAP
+
+```{r}
+DimPlot(data.seurat, reduction = "UMAP", group.by = "IDENT")
 ```
 
 ```{r}
-p <- ggplot(data.neurons, aes(x = UMAP_1, y = UMAP_2, color = IDENT)) + geom_point()
-p
+DimPlot(data.seurat, reduction = "UMAP", group.by = "CLUSTER")
 ```
 
-## II.1 Reading OXPHOS AUC values from AUCell (using the 133 OXPHOS genes from KEGG Oxphos pathway https://www.genome.jp/entry/mmu00190)
+### IV.2.a Plot Distribution OXPHOS
 
 ```{r}
-data.auc <- fread(input_Oxphos_135_AUCell_values_path, data.table = F, check.names = F)
-rownames(data.auc) <- data.auc$Cell
-data.auc
+hist(data.seurat$AUC_OXPHOS_135_KEGG, breaks = 100)
 ```
 
-QC
+### IV.2.b Plot Boxplot OXPHOS
 
-```{r}
-all(data.auc$Cell == data.metadata$CellID)
-```
-
-## II.2 Adding AUC metadata
-
-```{r}
-data.metadata[rownames(data.auc), "AUC_OXPHOS_135_KEGG"] <- data.auc$AUC
-hist(data.metadata$AUC_OXPHOS_135_KEGG, breaks = 100)
-```
-
-## Boxplot
-
-```{r, fig.width=5,fig.height=7}
-boxplot_data <- data.metadata
+```{r, fig.width=5,fig.height=5}
+boxplot_data <- data.seurat@meta.data
 
 # Filter out <5 cells per annotation
 boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
 
-# Filter out artefact & unnanotated
-boxplot_data <- boxplot_data[!boxplot_data$IDENT %in% c("unannotated", "artefact"),]
-
-# Calculating median values of "AUC_OXPHOS_68_Porcelli" for each group
+# Calculating median values of "AUC_OXPHOS_135_KEGG" for each group
 median_values <- tapply(boxplot_data$AUC_OXPHOS_135_KEGG, boxplot_data$IDENT, median)
 
 # Sorting the metadata based on median values
@@ -156,39 +414,40 @@ p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_135_Oxphos_AUCell_ordered_boxplot_IDENT.pdf"), width = 5, height = 7, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_135_Oxphos_AUCell_ordered_boxplot_IDENT.png"), width = 5, height = 7, dpi = 1000, bg = 'white')
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_135_Oxphos_AUCell_ordered_boxplot_IDENT_Neurons.pdf"), width = 5, height = 5, bg = "white")
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_135_Oxphos_AUCell_ordered_boxplot_IDENT_Neurons.png"), width = 5, height = 5, dpi = 1000, bg = 'white')
 ```
 
-## III Subsetting to only neurons
+### IV.2.c Plot UMAP OXPHOS
 
 ```{r}
-neuron.cells <- rownames(data.neurons)[rownames(data.neurons) %in% rownames(data.auc)]
-data.neurons[neuron.cells, "AUC_OXPHOS_135_KEGG"] <- data.auc[neuron.cells, "AUC"]
-hist(data.neurons$AUC_OXPHOS_135_KEGG, breaks = 100)
+FeaturePlot(data.seurat, reduction = "UMAP", features = "AUC_OXPHOS_135_KEGG")
 ```
 
-## Boxplot
+### IV.3.a Plot Distribution UPR
 
-```{r, fig.width=5,fig.height=7}
-boxplot_data <- data.neurons
+```{r}
+hist(data.seurat$AUC_UPR_93_REACTOME, breaks = 100)
+```
+
+### IV.3.b Plot Boxplot UPR
+
+```{r, fig.width=5,fig.height=5}
+boxplot_data <- data.seurat@meta.data
 
 # Filter out <5 cells per annotation
 boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
 
-# Filter out artefact & unnanotated
-boxplot_data <- boxplot_data[!boxplot_data$IDENT %in% c("unannotated", "artefact"),]
-
-# Calculating median values of "AUC_OXPHOS_68_Porcelli" for each group
-median_values <- tapply(boxplot_data$AUC_OXPHOS_135_KEGG, boxplot_data$IDENT, median)
+# Calculating median values of "AUC_UPR_93_REACTOME" for each group
+median_values <- tapply(boxplot_data$AUC_UPR_93_REACTOME, boxplot_data$IDENT, median)
 
 # Sorting the metadata based on median values
 boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
 
 # Plot
-p <- ggplot(boxplot_data, aes(x = IDENT, y = AUC_OXPHOS_135_KEGG, fill = IDENT)) +
+p <- ggplot(boxplot_data, aes(x = IDENT, y = AUC_UPR_93_REACTOME, fill = IDENT)) +
   geom_boxplot() +
-  labs(x = NULL, y = "AUC_OXPHOS_135_KEGG") +
+  labs(x = NULL, y = "AUC_UPR_93_REACTOME") +
   theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   NoLegend()
 
@@ -196,8 +455,123 @@ p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_IDENT_Neurons.pdf"), width = 5, height = 7, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_IDENT_Neurons.png"), width = 5, height = 7, dpi = 1000, bg = 'white')
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_93_UPR_AUCell_ordered_boxplot_IDENT_Neurons.pdf"), width = 5, height = 5, bg = "white")
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_93_UPR_AUCell_ordered_boxplot_IDENT_Neurons.png"), width = 5, height = 5, dpi = 1000, bg = 'white')
 ```
+
+### IV.3.c Plot UMAP UPR
+
+```{r}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "AUC_UPR_93_REACTOME")
+```
+
+### IV.4.a Plot Boxplot HSP90AA1
+
+```{r, fig.width=5,fig.height=5}
+boxplot_data <- data.seurat@meta.data
+boxplot_data$HSP90AA1 <- data.seurat@assays$RNA@data["HSP90AA1",]
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "HSP90AA1" for each group
+median_values <- tapply(boxplot_data$HSP90AA1, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = HSP90AA1, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "HSP90AA1 Normalized expression") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_HSP90AA1_ordered_boxplot_IDENT_Neurons.pdf"), width = 5, height = 5, bg = "white")
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_HSP90AA1_ordered_boxplot_IDENT_Neurons.png"), width = 5, height = 5, dpi = 1000, bg = 'white')
+```
+
+### IV.4.b Plot UMAP HSP90AA1
+
+```{r}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "HSP90AA1")
+```
+
+### IV.5.a Plot Boxplot HSPA8
+
+```{r, fig.width=5,fig.height=5}
+boxplot_data <- data.seurat@meta.data
+boxplot_data$HSPA8 <- data.seurat@assays$RNA@data["HSPA8",]
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "HSPA8" for each group
+median_values <- tapply(boxplot_data$HSPA8, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = HSPA8, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "HSPA8 Normalized expression") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_HSPA8_ordered_boxplot_IDENT_Neurons.pdf"), width = 5, height = 5, bg = "white")
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_HSPA8_ordered_boxplot_IDENT_Neurons.png"), width = 5, height = 5, dpi = 1000, bg = 'white')
+```
+
+### IV.5.b Plot UMAP HSPA8
+
+```{r}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "HSPA8")
+```
+
+### IV.6.a Plot Boxplot ATF4
+
+```{r, fig.width=5,fig.height=5}
+boxplot_data <- data.seurat@meta.data
+boxplot_data$ATF4 <- data.seurat@assays$RNA@data["ATF4",]
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "ATF4" for each group
+median_values <- tapply(boxplot_data$ATF4, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = ATF4, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "ATF4 Normalized expression") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+```{r}
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_ATF4_ordered_boxplot_IDENT_Neurons.pdf"), width = 5, height = 5, bg = "white")
+#ggsave(p, filename = paste0(output_figure_prefix, "Martirosyan_ATF4_ordered_boxplot_IDENT_Neurons.png"), width = 5, height = 5, dpi = 1000, bg = 'white')
+```
+
+### IV.6.b Plot UMAP ATF4
+
+```{r}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "ATF4")
+```
+
 
 
