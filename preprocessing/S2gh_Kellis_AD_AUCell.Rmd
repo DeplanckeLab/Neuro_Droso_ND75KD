@@ -1,0 +1,265 @@
+---
+title: "Emma Pan Neuro (Control + ND75KD) - Preprocessing Kells AD data"
+author: "Vincent Gardeux"
+date: "2025/04/23"
+last_modified: "2025/04/23"
+output:
+  html_document:
+    df_print: paged
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
+```
+
+## Libraries & functions
+
+First, I'm loading the required libraries & functions
+
+```{r}
+suppressPackageStartupMessages(library(Seurat)) # Seurat v5 is needed here
+suppressPackageStartupMessages(library(BPCells)) # For handling big scRNAseq data in Seurat
+suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
+suppressPackageStartupMessages(library(ggplot2)) # For plotting
+suppressPackageStartupMessages(library(ggpubr)) # For grid plotting
+suppressPackageStartupMessages(library(plotly)) # For interactive plots
+suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
+
+cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("SeuratObject"), "version", as.character(packageVersion("SeuratObject")), "\n")
+cat(bold("BPCells"), "version", as.character(packageVersion("BPCells")), "\n")
+cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
+cat(bold("ggplot2"), "version", as.character(packageVersion("ggplot2")), "\n")
+cat(bold("ggpubr"), "version", as.character(packageVersion("ggpubr")), "\n")
+cat(bold("plotly"), "version", as.character(packageVersion("plotly")), "\n")
+
+# Random seed
+set.seed(42)
+```
+
+## Parameters
+
+*Paper:* https://www.nature.com/articles/s41586-024-07606-7
+
+*Data repo:* Synapse
+
+```{r}
+## Parameters
+input_seurat_object <- "./data/Kellis_2024/Gene Expression (snRNAseq - 10x) processed, multi-region/all_brain_regions_filt_preprocessed_scanpy_fullmatrix.rds"
+input_Oxphos_119_AUCell_values_path <- "./data/Kellis_119_Oxphos_AUCell_auc.tsv"
+input_UPR_92_AUCell_values_path <- "./data/Kellis_92_UPR_AUCell_auc.tsv"
+output_figure_prefix <- "./figures/Figure_5A/Kellis_"
+output_seurat_object <- "./data/Kellis_2024/Gene Expression (snRNAseq - 10x) processed, multi-region/all_brain_regions_filt_preprocessed_scanpy_fullmatrix_excitatory.neurons.only.rds"
+```
+
+## Functions
+
+```{r}
+plot.boxplot.aucell <- function(data.metadata, auc.name, metadata.name, pwidth = 5, pheight = 7, filename = NULL) {
+  # Remove rows with NA in the metadata column
+  boxplot_data <- data.metadata[!is.na(data.metadata[[metadata.name]]), ]
+
+  # Calculate median values of AUC per group
+  median_values <- tapply(boxplot_data[[auc.name]], boxplot_data[[metadata.name]], median)
+
+  # Reorder factor levels of metadata based on median AUC
+  boxplot_data[[metadata.name]] <- factor(boxplot_data[[metadata.name]], levels = names(sort(median_values, decreasing = FALSE)))
+
+  # Plot
+  p <- ggplot(boxplot_data, aes(x = .data[[metadata.name]], y = .data[[auc.name]])) +
+    geom_boxplot(fill = "lightgrey") +
+    labs(x = metadata.name, y = auc.name, title = metadata.name) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), legend.position = "none")
+
+  # Save plots
+  if(is.null(filename)) filename <- paste0(output_figure_prefix, auc.name, "_AUCell_ordered_boxplot_", metadata.name)
+  ggsave(paste0(filename, ".pdf"), plot = p, width = pwidth, height = pheight, bg = "white")
+  ggsave(paste0(filename, ".png"), plot = p, width = pwidth, height = pheight, dpi = 1000, bg = "white")
+
+  return(p)
+}
+```
+
+## I. Loading Seurat object
+
+```{r}
+data.seurat <- readRDS(input_seurat_object)
+data.seurat
+```
+
+```{r}
+p <- ggplot(data.seurat@meta.data, aes(x = U1, y = U2, color = region)) + geom_point()
+p
+```
+
+## II.1 Reading OXPHOS AUC values from AUCell (using the 133 OXPHOS genes from KEGG Oxphos pathway https://www.genome.jp/entry/mmu00190)
+
+```{r}
+data.auc.oxphos <- fread(input_Oxphos_119_AUCell_values_path, data.table = F)
+data.auc.oxphos
+```
+
+QC
+
+```{r}
+all(colnames(data.seurat) %in% data.auc.oxphos$Cell) # Number differs for unknown reason... It matches the Seurat objects though...
+```
+
+## II.2 Adding AUC metadata
+
+```{r}
+data.seurat$AUC_OXPHOS_119_KEGG <- data.auc.oxphos[match(colnames(data.seurat), data.auc.oxphos$Cell, nomatch = NA), "AUC"]
+hist(data.seurat$AUC_OXPHOS_119_KEGG, breaks = 100)
+```
+
+## III.1 Reading Unfolded Protein Response (UPR) AUC values from AUCell
+
+```{r}
+data.auc.upr <- fread(input_UPR_92_AUCell_values_path, data.table = F)
+data.auc.upr
+```
+
+QC
+
+```{r}
+all(colnames(data.seurat) %in% data.auc.upr$Cell) # Number differs for unknown reason... It matches the Seurat objects though...
+```
+
+## III.2 Adding AUC metadata
+
+```{r}
+data.seurat$AUC_UPR_92 <- data.auc.upr[match(colnames(data.seurat), data.auc.upr$Cell, nomatch = NA), "AUC"]
+hist(data.seurat$AUC_UPR_92, breaks = 100)
+```
+
+## IV Boxplots
+
+```{r, fig.width=5,fig.height=7}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "region")
+```
+
+```{r, fig.width=5,fig.height=7}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "major.celltype")
+```
+
+```{r, fig.width=5,fig.height=7}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "minor.celltype")
+```
+
+```{r, fig.width=5,fig.height=7}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "full.exttype")
+```
+
+```{r, fig.width=5,fig.height=7}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "neuronal.exttype")
+```
+
+```{r, fig.width=10,fig.height=7}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "cell_type_high_resolution", 10, 7)
+```
+
+```{r, fig.width=5,fig.height=7}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "hsubclass", 5, 7)
+```
+
+```{r, fig.width=5,fig.height=7}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "region")
+```
+
+```{r, fig.width=5,fig.height=7}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "major.celltype")
+```
+
+```{r, fig.width=5,fig.height=7}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "minor.celltype")
+```
+
+```{r, fig.width=5,fig.height=7}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "full.exttype")
+```
+
+```{r, fig.width=5,fig.height=7}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "neuronal.exttype")
+```
+
+```{r, fig.width=10,fig.height=7}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "cell_type_high_resolution", 10, 7)
+```
+
+```{r, fig.width=5,fig.height=7}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "hsubclass", 5, 7)
+```
+
+## Excitatory neurons only
+
+```{r}
+data.seurat.exc <- data.seurat[,data.seurat@meta.data$hcelltype == "Exc"]
+data.seurat.exc
+```
+
+### Run the default pipeline (not correcting for batch effects, or integrating batches together since I don't know what are the batches? Is it projid?)
+
+```{r}
+data.seurat.exc <- NormalizeData(data.seurat.exc, normalization.method = "LogNormalize", scale.factor = 10000)
+data.seurat.exc <- FindVariableFeatures(data.seurat.exc, selection.method = "vst", nfeatures = 2000)
+data.seurat.exc <- ScaleData(data.seurat.exc, features = rownames(data.seurat.exc))
+data.seurat.exc <- RunPCA(data.seurat.exc, features = VariableFeatures(object = data.seurat.exc), npcs = 150)
+```
+
+```{r}
+ElbowPlot(data.seurat.exc, ndims = 120)
+```
+
+```{r}
+# Jackstraw not optimized for dense 
+#data.seurat.exc <- JackStraw(data.seurat.exc, num.replicate = 100, dims = 150)
+#data.seurat.exc <- ScoreJackStraw(data.seurat.exc, dims = 1:150)
+#JackStrawPlot(data.seurat.exc, dims = 75:95)
+```
+
+```{r}
+nb_PCs <- 100 # A bit arbitrary, Elbow plot sucks for big datasets, but the Jackstraw cannot be run
+
+options(future.globals.maxSize = 8000 * 1024^2) # Needed for FindNeighbors not to crash
+data.seurat.exc <- FindNeighbors(data.seurat.exc, dims = 1:nb_PCs)
+data.seurat.exc <- FindClusters(data.seurat.exc, resolution = 0.5)
+data.seurat.exc <- RunUMAP(data.seurat.exc, dims = 1:nb_PCs)
+data.seurat.exc <- RunTSNE(data.seurat.exc, dims = 1:nb_PCs)
+```
+
+```{r, fig.width=5,fig.height=7}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_OXPHOS_119_KEGG", "cell_type_high_resolution", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_cell_type_high_resolution_Excitatory.neurons-only"))
+```
+
+```{r, fig.width=5,fig.height=7}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_UPR_92", "cell_type_high_resolution", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_cell_type_high_resolution_Excitatory.neurons-only"))
+```
+
+```{r, fig.width=5,fig.height=7}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_OXPHOS_119_KEGG", "neuronal.exttype", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_neuronal.exttype_Excitatory.neurons-only"))
+```
+
+```{r, fig.width=5,fig.height=7}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_UPR_92", "neuronal.exttype", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_neuronal.exttype_Excitatory.neurons-only"))
+```
+
+### Save Seurat object
+
+```{r}
+saveRDS(data.seurat.exc, file = output_seurat_object)
+```
+
+### UMAP
+
+```{r}
+DimPlot(data.seurat.exc, reduction = "umap", label = T, group.by = "neuronal.exttype")
+```
+```{r}
+DimPlot(data.seurat.exc, reduction = "umap", label = T, group.by = "region")
+```
+
+```{r}
+DimPlot(data.seurat.exc, reduction = "umap", label = T, group.by = "region")
+```

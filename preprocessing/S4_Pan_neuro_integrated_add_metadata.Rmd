@@ -7,7 +7,7 @@ output:
   html_document:
     df_print: paged
 ---
-  
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
@@ -120,7 +120,7 @@ for(regulon in colnames(data.scenic)){
 
 ## III.3 Compute UMAP on regulon matrix
 
-```{r, fig.height = 8, fig.width = 12}
+```{r fig.height=8, fig.width=12}
 # Adding whole binarized regulon matrix as an embedding
 colnames(data.scenic) <- paste0("SCENIC_", 1:ncol(data.scenic))
 data.seurat@reductions[['SCENIC']] <- CreateDimReducObject(embeddings = as.matrix(data.scenic), key = 'SCENIC_', assay = 'RNA')
@@ -132,7 +132,7 @@ DimPlot(data.seurat, reduction = "SCENICumap", label = TRUE, pt.size = 0.5, grou
 
 ## III.4 Compute t-SNE on regulon matrix
 
-```{r, fig.height = 8, fig.width = 12}
+```{r fig.height=8, fig.width=12}
 # Compute t-SNE on it
 data.seurat <- RunTSNE(object = data.seurat, reduction.name = "SCENICtsne", reduction = "SCENIC", dims = 1:ncol(data.scenic), reduction.key = "SCENICtsne_", assay = 'RNA')
 DimPlot(data.seurat, reduction = "SCENICtsne", label = TRUE, pt.size = 0.5, group.by = "annotation") + NoLegend()
@@ -167,7 +167,7 @@ for(regulon in colnames(data.scenic)){
 
 ## IV.3 Compute UMAP on regulon matrix
 
-```{r, fig.height = 8, fig.width = 12}
+```{r fig.height=8, fig.width=12}
 # Adding whole binarized regulon matrix as an embedding
 colnames(data.scenic) <- paste0("SCENIC_", 1:ncol(data.scenic))
 data.seurat@reductions[['SCENICbinarized']] <- CreateDimReducObject(embeddings = as.matrix(data.scenic), key = 'SCENICbinarized_', assay = 'RNA')
@@ -179,7 +179,7 @@ DimPlot(data.seurat, reduction = "SCENICbinarizedumap", label = TRUE, pt.size = 
 
 ## IV.4 Compute t-SNE on regulon matrix
 
-```{r, fig.height = 8, fig.width = 12}
+```{r fig.height=8, fig.width=12}
 # Compute t-SNE on it
 data.seurat <- RunTSNE(object = data.seurat, reduction.name = "SCENICbinarizedtsne", reduction = "SCENICbinarized", dims = 1:ncol(data.scenic), reduction.key = "SCENICbinarizedtsne_", assay = 'RNA')
 DimPlot(data.seurat, reduction = "SCENICbinarizedtsne", label = TRUE, pt.size = 0.5, group.by = "annotation") + NoLegend()
@@ -194,7 +194,7 @@ rm(data.annotations)
 
 ## V. Predicting groups
 
-```{r, fig.width=18, fig.height=24}
+```{r fig.width=18, fig.height=24}
 plot.list <- list()
 for(cluster in levels(data.seurat$seurat_clusters)){
   data.tmp <- as.data.frame(t(data.seurat@assays$RNA@data[c("Imp", "pros", "dati", "scro"), data.seurat$seurat_clusters == cluster]))
@@ -255,15 +255,15 @@ data.seurat$Neuron_category <- factor(label, levels = c("Central Brain A", "Cent
 table(data.seurat$Neuron_category)
 ```
 
-```{r, fig.height=7, fig.width=9}
+```{r fig.height=7, fig.width=9}
 DimPlot(data.seurat, reduction = "tsne_harmony", pt.size = 0.5, group.by = "Neuron_category", cols = steinPalette)
 ```
 
-```{r, fig.height=6, fig.width=9}
+```{r fig.height=6, fig.width=9}
 DimPlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, group.by = "Neuron_category", cols = steinPalette)
 ```
 
-```{r, fig.height=6, fig.width=9}
+```{r fig.height=6, fig.width=9}
 DimPlot(data.seurat, reduction = "SCENICbinarizedtsne", pt.size = 0.5, group.by = "Neuron_category", cols = steinPalette)
 ```
 
@@ -290,15 +290,15 @@ data.seurat$Neuron_category <- factor(label, levels = c("Central Brain A", "Cent
 table(data.seurat$Neuron_category)
 ```
 
-```{r, fig.height=7, fig.width=9}
+```{r fig.height=7, fig.width=9}
 DimPlot(data.seurat, reduction = "tsne_harmony", pt.size = 0.5, group.by = "Neuron_category", cols = steinPalette)
 ```
 
-```{r, fig.height=6, fig.width=9}
+```{r fig.height=6, fig.width=9}
 DimPlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, group.by = "Neuron_category", cols = steinPalette)
 ```
 
-```{r, fig.height=6, fig.width=9}
+```{r fig.height=6, fig.width=9}
 DimPlot(data.seurat, reduction = "SCENICbinarizedtsne", pt.size = 0.5, group.by = "Neuron_category", cols = steinPalette)
 ```
 
