@@ -47,8 +47,8 @@ set.seed(42)
 ```{r}
 ## Parameters
 input_seurat_object <- "./data/Kellis_2024/Gene Expression (snRNAseq - 10x) processed, multi-region/all_brain_regions_filt_preprocessed_scanpy_fullmatrix.rds"
-input_Oxphos_119_AUCell_values_path <- "./data/Kellis_119_Oxphos_AUCell_auc.tsv"
-input_UPR_92_AUCell_values_path <- "./data/Kellis_92_UPR_AUCell_auc.tsv"
+input_Oxphos_119_AUCell_values_path <- "./data/Kellis_119_Oxphos_AUCell_auc.tsv.gz"
+input_UPR_92_AUCell_values_path <- "./data/Kellis_92_UPR_AUCell_auc.tsv.gz"
 output_figure_prefix <- "./figures/Figure_5A/Kellis_"
 output_seurat_object <- "./data/Kellis_2024/Gene Expression (snRNAseq - 10x) processed, multi-region/all_brain_regions_filt_preprocessed_scanpy_fullmatrix_excitatory.neurons.only.rds"
 ```
@@ -253,13 +253,50 @@ saveRDS(data.seurat.exc, file = output_seurat_object)
 
 ### UMAP
 
-```{r}
-DimPlot(data.seurat.exc, reduction = "umap", label = T, group.by = "neuronal.exttype")
-```
-```{r}
-DimPlot(data.seurat.exc, reduction = "umap", label = T, group.by = "region")
+```{r, fig.width=10, fig.height=10}
+p <- DimPlot(data.seurat.exc, reduction = "umap", label = T, group.by = "cell_type_high_resolution", raster = F) + NoLegend()
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_cell_type_high_resolution.pdf"), plot = p, width = 10, height = 10, bg = "white")
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_cell_type_high_resolution.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
+p
 ```
 
-```{r}
-DimPlot(data.seurat.exc, reduction = "umap", label = T, group.by = "region")
+```{r, fig.width=10, fig.height=10}
+p <- DimPlot(data.seurat.exc, reduction = "umap", label = T, group.by = "hcluster", raster = F) + NoLegend()
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_hcluster.pdf"), plot = p, width = 10, height = 10, bg = "white")
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_hcluster.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
+p
+```
+
+```{r, fig.width=10, fig.height=10}
+p <- DimPlot(data.seurat.exc, reduction = "umap", label = T, group.by = "neuronal.layer", raster = F) + NoLegend()
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_neuronal.layer.pdf"), plot = p, width = 10, height = 10, bg = "white")
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_neuronal.layer.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
+p
+```
+
+```{r, fig.width=10, fig.height=10}
+p <- DimPlot(data.seurat.exc, reduction = "umap", label = T, group.by = "neuronal.exttype", raster = F) + NoLegend()
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_neuronal.exttype.pdf"), plot = p, width = 10, height = 10, bg = "white")
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_neuronal.exttype.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
+p
+```
+```{r, fig.width=10, fig.height=10}
+p <- DimPlot(data.seurat.exc, reduction = "umap", label = T, group.by = "region", raster = F) + NoLegend()
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_region.pdf"), plot = p, width = 10, height = 10, bg = "white")
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_region.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
+p
+```
+
+```{r, fig.width=10, fig.height=10}
+p <- FeaturePlot(data.seurat.exc, reduction = "umap", features = "AUC_OXPHOS_119_KEGG", raster = F)
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_AUC_OXPHOS_119_KEGG.pdf"), plot = p, width = 10, height = 10, bg = "white")
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_AUC_OXPHOS_119_KEGG.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
+p
+```
+
+```{r, fig.width=10, fig.height=10}
+p <- FeaturePlot(data.seurat.exc, reduction = "umap", features = "AUC_UPR_92", raster = F)
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_AUC_UPR_92.pdf"), plot = p, width = 10, height = 10, bg = "white")
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_AUC_UPR_92.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
+p
 ```
