@@ -1,5 +1,5 @@
 ---
-title: "Emma Pan Neuro (Control + ND75KD) - Preprocessing Kells AD data"
+title: "Emma Pan Neuro (Control + ND75KD) - Preprocessing Kells AD data - REGION dataset"
 author: "Vincent Gardeux"
 date: "2025/04/23"
 last_modified: "2025/04/23"
@@ -7,7 +7,7 @@ output:
   html_document:
     df_print: paged
 ---
-  
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
@@ -94,6 +94,37 @@ p <- ggplot(data.seurat@meta.data, aes(x = U1, y = U2, color = region)) + geom_p
 p
 ```
 
+```{r}
+data.clinical <- fread("./data/Kellis_2024/Supplementary_Table_1_sample_metadata.tsv", data.table = F)
+data.clinical
+```
+
+```{r}
+data.mapping <- fread("./data/Kellis_2024/mapping.txt", data.table = F)
+data.mapping
+```
+
+```{r}
+projid.table <- table(data.seurat@meta.data$projid)
+rind.table <- table(data.seurat@meta.data$rind)
+for(i in 1:nrow(data.mapping)){
+    mapped.projid <- names(projid.table)[projid.table == data.mapping[i, "nbcells"]]
+    data.clinical[data.clinical$subject == data.mapping[i, "Individual"], "projid"] <- mapped.projid
+    for(region in c("AG", "EC", "HC", "MT", "PFC", "TH")){
+        mapped.rind <- na.omit(unique(data.seurat@meta.data[data.seurat@meta.data$region == region & data.seurat@meta.data$projid == mapped.projid, "rind"]))
+        if(length(mapped.rind) == 1){
+            data.clinical[data.clinical$subject == data.mapping[i, "Individual"] & data.clinical$region == region, "rind"] <- mapped.rind
+        } else {
+            message("ERROR i=", i, " & projid=", mapped.projid, " & rind=", mapped.rind)
+        }
+    }
+}
+```
+
+```{r}
+fwrite(data.clinical, file = "./data/Kellis_2024/Supplementary_Table_1_sample_metadata.completed.tsv", quote = F, row.names = F, col.names = T, sep = "\t")
+```
+
 ## II.1 Reading OXPHOS AUC values from AUCell (using the 133 OXPHOS genes from KEGG Oxphos pathway https://www.genome.jp/entry/mmu00190)
 
 ```{r}
@@ -136,59 +167,59 @@ hist(data.seurat$AUC_UPR_92, breaks = 100)
 
 ## IV Boxplots
 
-```{r, fig.width=5,fig.height=7}
+```{r fig.width=5, fig.height=7}
 plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "region")
 ```
 
-```{r, fig.width=5,fig.height=7}
+```{r fig.width=5, fig.height=7}
 plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "major.celltype")
 ```
 
-```{r, fig.width=5,fig.height=7}
+```{r fig.width=5, fig.height=7}
 plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "minor.celltype")
 ```
 
-```{r, fig.width=5,fig.height=7}
+```{r fig.width=5, fig.height=7}
 plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "full.exttype")
 ```
 
-```{r, fig.width=5,fig.height=7}
+```{r fig.width=5, fig.height=7}
 plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "neuronal.exttype")
 ```
 
-```{r, fig.width=10,fig.height=7}
+```{r fig.width=10, fig.height=7}
 plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "cell_type_high_resolution", 10, 7)
 ```
 
-```{r, fig.width=5,fig.height=7}
+```{r fig.width=5, fig.height=7}
 plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "hsubclass", 5, 7)
 ```
 
-```{r, fig.width=5,fig.height=7}
+```{r fig.width=5, fig.height=7}
 plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "region")
 ```
 
-```{r, fig.width=5,fig.height=7}
+```{r fig.width=5, fig.height=7}
 plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "major.celltype")
 ```
 
-```{r, fig.width=5,fig.height=7}
+```{r fig.width=5, fig.height=7}
 plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "minor.celltype")
 ```
 
-```{r, fig.width=5,fig.height=7}
+```{r fig.width=5, fig.height=7}
 plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "full.exttype")
 ```
 
-```{r, fig.width=5,fig.height=7}
+```{r fig.width=5, fig.height=7}
 plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "neuronal.exttype")
 ```
 
-```{r, fig.width=10,fig.height=7}
+```{r fig.width=10, fig.height=7}
 plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "cell_type_high_resolution", 10, 7)
 ```
 
-```{r, fig.width=5,fig.height=7}
+```{r fig.width=5, fig.height=7}
 plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "hsubclass", 5, 7)
 ```
 
@@ -229,19 +260,19 @@ data.seurat.exc <- RunUMAP(data.seurat.exc, dims = 1:nb_PCs)
 data.seurat.exc <- RunTSNE(data.seurat.exc, dims = 1:nb_PCs)
 ```
 
-```{r, fig.width=5,fig.height=7}
+```{r fig.width=5, fig.height=7}
 plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_OXPHOS_119_KEGG", "cell_type_high_resolution", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_cell_type_high_resolution_Excitatory.neurons-only"))
 ```
 
-```{r, fig.width=5,fig.height=7}
+```{r fig.width=5, fig.height=7}
 plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_UPR_92", "cell_type_high_resolution", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_cell_type_high_resolution_Excitatory.neurons-only"))
 ```
 
-```{r, fig.width=5,fig.height=7}
+```{r fig.width=5, fig.height=7}
 plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_OXPHOS_119_KEGG", "neuronal.exttype", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_neuronal.exttype_Excitatory.neurons-only"))
 ```
 
-```{r, fig.width=5,fig.height=7}
+```{r fig.width=5, fig.height=7}
 plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_UPR_92", "neuronal.exttype", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_neuronal.exttype_Excitatory.neurons-only"))
 ```
 
@@ -251,50 +282,54 @@ plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_UPR_92", "neuronal.exttype",
 saveRDS(data.seurat.exc, file = output_seurat_object)
 ```
 
+```{r}
+data.seurat.exc <- readRDS(output_seurat_object)
+```
+
 ### UMAP
 
-```{r, fig.width=10, fig.height=10}
+```{r fig.width=10, fig.height=10}
 p <- DimPlot(data.seurat.exc, reduction = "umap", label = T, group.by = "cell_type_high_resolution", raster = F) + NoLegend()
 ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_cell_type_high_resolution.pdf"), plot = p, width = 10, height = 10, bg = "white")
 ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_cell_type_high_resolution.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
 p
 ```
 
-```{r, fig.width=10, fig.height=10}
+```{r fig.width=10, fig.height=10}
 p <- DimPlot(data.seurat.exc, reduction = "umap", label = T, group.by = "hcluster", raster = F) + NoLegend()
 ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_hcluster.pdf"), plot = p, width = 10, height = 10, bg = "white")
 ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_hcluster.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
 p
 ```
 
-```{r, fig.width=10, fig.height=10}
+```{r fig.width=10, fig.height=10}
 p <- DimPlot(data.seurat.exc, reduction = "umap", label = T, group.by = "neuronal.layer", raster = F) + NoLegend()
 ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_neuronal.layer.pdf"), plot = p, width = 10, height = 10, bg = "white")
 ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_neuronal.layer.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
 p
 ```
 
-```{r, fig.width=10, fig.height=10}
+```{r fig.width=10, fig.height=10}
 p <- DimPlot(data.seurat.exc, reduction = "umap", label = T, group.by = "neuronal.exttype", raster = F) + NoLegend()
 ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_neuronal.exttype.pdf"), plot = p, width = 10, height = 10, bg = "white")
 ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_neuronal.exttype.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
 p
 ```
-```{r, fig.width=10, fig.height=10}
+```{r fig.width=10, fig.height=10}
 p <- DimPlot(data.seurat.exc, reduction = "umap", label = T, group.by = "region", raster = F) + NoLegend()
 ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_region.pdf"), plot = p, width = 10, height = 10, bg = "white")
 ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_region.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
 p
 ```
 
-```{r, fig.width=10, fig.height=10}
+```{r fig.width=10, fig.height=10}
 p <- FeaturePlot(data.seurat.exc, reduction = "umap", features = "AUC_OXPHOS_119_KEGG", raster = F)
 ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_AUC_OXPHOS_119_KEGG.pdf"), plot = p, width = 10, height = 10, bg = "white")
 ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_AUC_OXPHOS_119_KEGG.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
 p
 ```
 
-```{r, fig.width=10, fig.height=10}
+```{r fig.width=10, fig.height=10}
 p <- FeaturePlot(data.seurat.exc, reduction = "umap", features = "AUC_UPR_92", raster = F)
 ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_AUC_UPR_92.pdf"), plot = p, width = 10, height = 10, bg = "white")
 ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_AUC_UPR_92.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
