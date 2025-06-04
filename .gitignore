@@ -12,4 +12,6 @@ data/Martirosyan_2024/Martirosyan_regulons_aucell.tsv
 data/Martirosyan_2024/Martirosyan_regulons_aucell_binarized.tsv
 data/Martirosyan_2024/Martirosyan_adj.csv
 data/Martirosyan_2024/GSE243639_Filtered_count_table.csv.gz
+data/Martirosyan_2024/Martirosyan_adj_v2.csv
+data/Martirosyan_2024/Martirosyan_modules.tsv
 data/Kellis_2024/*

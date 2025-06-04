@@ -11,6 +11,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
+#setwd("/data/gardeux/Neuro_Droso_ND75KD/")
 ```
 
 ## Libraries & functions
@@ -82,7 +83,41 @@ plot.boxplot.aucell <- function(data.metadata, auc.name, metadata.name, pwidth =
 }
 ```
 
+```{r}
+plot.boxplot.aucell.2 <- function(data.metadata, auc.name, metadata.name, metadata.2.name, pwidth = 5, pheight = 7, filename = NULL) {
+  # Remove rows with NA in the relevant metadata columns
+  boxplot_data <- data.metadata[!is.na(data.metadata[[metadata.name]]) & !is.na(data.metadata[[metadata.2.name]]), ]
+
+  # Calculate median AUC per group (based only on the main grouping)
+  median_values <- tapply(boxplot_data[[auc.name]], boxplot_data[[metadata.name]], median)
+
+  # Reorder factor levels of main grouping
+  boxplot_data[[metadata.name]] <- factor(boxplot_data[[metadata.name]], levels = names(sort(median_values, decreasing = FALSE)))
+  
+  # Ensure the fill variable is a factor
+  boxplot_data[[metadata.2.name]] <- as.factor(boxplot_data[[metadata.2.name]])
+
+  # Plot with grouping
+  p <- ggplot(boxplot_data, aes(x = .data[[metadata.name]], y = .data[[auc.name]], fill = .data[[metadata.2.name]])) +
+    geom_boxplot(position = position_dodge(width = 0.8), outlier.size = 0.5) +
+    labs(x = metadata.name, y = auc.name, fill = metadata.2.name, title = metadata.name) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+  # Save plots
+  if (is.null(filename)) filename <- paste0(output_figure_prefix, auc.name, "_AUCell_ordered_grouped_boxplot_", metadata.name, "_by_", metadata.2.name)
+  ggsave(paste0(filename, ".pdf"), plot = p, width = pwidth, height = pheight, bg = "white")
+  ggsave(paste0(filename, ".png"), plot = p, width = pwidth, height = pheight, dpi = 1000, bg = "white")
+
+  return(p)
+}
+
+```
+
 ## I. Loading Seurat object
+
+
+### I.1 Read previously generated Seurat object (1.6M cells)
 
 ```{r}
 data.seurat <- readRDS(input_seurat_object)
@@ -93,6 +128,11 @@ data.seurat
 p <- ggplot(data.seurat@meta.data, aes(x = U1, y = U2, color = region)) + geom_point()
 p
 ```
+
+### I.2 Reading and mapping clinical metadata
+
+
+#### I.2.1 (To be run once) Fixing missing metadata
 
 ```{r}
 data.clinical <- fread("./data/Kellis_2024/Supplementary_Table_1_sample_metadata.tsv", data.table = F)
@@ -123,6 +163,27 @@ for(i in 1:nrow(data.mapping)){
 
 ```{r}
 fwrite(data.clinical, file = "./data/Kellis_2024/Supplementary_Table_1_sample_metadata.completed.tsv", quote = F, row.names = F, col.names = T, sep = "\t")
+```
+
+#### I.2.2 Reading clinical metadata from file
+
+```{r}
+data.clinical <- fread("./data/Kellis_2024/Supplementary_Table_1_sample_metadata.completed.tsv", data.table = F)
+data.clinical
+```
+
+### I.3 Adding to Seurat object
+
+```{r}
+data.seurat$subject <- data.clinical$subject[match(data.seurat$projid, data.clinical$projid)]
+data.seurat$msex <- data.clinical$msex[match(data.seurat$projid, data.clinical$projid)]
+data.seurat$msex <- factor(data.seurat$msex, levels = as.character(0:1))
+data.seurat$age_death <- data.clinical$age_death[match(data.seurat$projid, data.clinical$projid)]
+data.seurat$age_death <- factor(data.seurat$age_death, levels = c("(75,80]", "(80,85]", "(85,90]", "90+"))
+data.seurat$pmi <- data.clinical$pmi[match(data.seurat$projid, data.clinical$projid)]
+data.seurat$pmi <- factor(data.seurat$pmi, levels = as.character(3:12))
+data.seurat$pathAD <- data.clinical$pathAD[match(data.seurat$projid, data.clinical$projid)]
+data.seurat$clinicalDiag <- data.clinical$clinicalDiag[match(data.seurat$projid, data.clinical$projid)]
 ```
 
 ## II.1 Reading OXPHOS AUC values from AUCell (using the 133 OXPHOS genes from KEGG Oxphos pathway https://www.genome.jp/entry/mmu00190)
@@ -195,6 +256,46 @@ plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "cell_type_hig
 plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "hsubclass", 5, 7)
 ```
 
+```{r}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "age_death", 5, 7)
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "pmi", 5, 7)
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "pathAD", 5, 7)
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "clinicalDiag", 5, 7)
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "msex", 5, 7)
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "neuronal.exttype", "msex", pwidth = 10)
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "neuronal.exttype", "clinicalDiag", pwidth = 10)
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "neuronal.exttype", "pathAD", pwidth = 10)
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "neuronal.exttype", "age_death", pwidth = 15)
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "neuronal.exttype", "pmi", pwidth = 20)
+```
+
 ```{r fig.width=5, fig.height=7}
 plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "region")
 ```
@@ -221,6 +322,54 @@ plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "cell_type_high_resolut
 
 ```{r fig.width=5, fig.height=7}
 plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "hsubclass", 5, 7)
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "age_death", 5, 7)
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "pmi", 5, 7)
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "pathAD", 5, 7)
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "clinicalDiag", 5, 7)
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat@meta.data, "AUC_UPR_92", "msex", 5, 7)
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat@meta.data, "AUC_UPR_92", "neuronal.exttype", "msex", pwidth = 10)
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat@meta.data, "AUC_UPR_92", "neuronal.exttype", "clinicalDiag", pwidth = 10)
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat@meta.data, "AUC_UPR_92", "neuronal.exttype", "pathAD", pwidth = 10)
+```
+
+```{r}
+sum(data.seurat$pathAD == "AD" & data.seurat$neuronal.exttype == "NRGN", na.rm = T)
+sum(data.seurat$pathAD == "non-AD" & data.seurat$neuronal.exttype == "NRGN", na.rm = T)
+sum(data.seurat$pathAD == "AD", na.rm = T)
+sum(data.seurat$pathAD == "non-AD", na.rm = T)
+```
+
+
+```{r}
+plot.boxplot.aucell.2(data.seurat@meta.data, "AUC_UPR_92", "neuronal.exttype", "pmi", pwidth = 20)
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat@meta.data, "AUC_UPR_92", "neuronal.exttype", "age_death", pwidth = 15)
 ```
 
 ## Excitatory neurons only
@@ -260,22 +409,6 @@ data.seurat.exc <- RunUMAP(data.seurat.exc, dims = 1:nb_PCs)
 data.seurat.exc <- RunTSNE(data.seurat.exc, dims = 1:nb_PCs)
 ```
 
-```{r fig.width=5, fig.height=7}
-plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_OXPHOS_119_KEGG", "cell_type_high_resolution", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_cell_type_high_resolution_Excitatory.neurons-only"))
-```
-
-```{r fig.width=5, fig.height=7}
-plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_UPR_92", "cell_type_high_resolution", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_cell_type_high_resolution_Excitatory.neurons-only"))
-```
-
-```{r fig.width=5, fig.height=7}
-plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_OXPHOS_119_KEGG", "neuronal.exttype", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_neuronal.exttype_Excitatory.neurons-only"))
-```
-
-```{r fig.width=5, fig.height=7}
-plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_UPR_92", "neuronal.exttype", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_neuronal.exttype_Excitatory.neurons-only"))
-```
-
 ### Save Seurat object
 
 ```{r}
@@ -284,6 +417,178 @@ saveRDS(data.seurat.exc, file = output_seurat_object)
 
 ```{r}
 data.seurat.exc <- readRDS(output_seurat_object)
+```
+
+```{r}
+data.seurat.exc$msex <- factor(data.seurat.exc$msex, levels = as.character(0:1))
+data.seurat.exc$age_death <- factor(data.seurat.exc$age_death, levels = c("(75,80]", "(80,85]", "(85,90]", "90+"))
+data.seurat.exc$pmi <- factor(data.seurat.exc$pmi, levels = as.character(3:12))
+```
+
+### Boxplots
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_OXPHOS_119_KEGG", "cell_type_high_resolution", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_cell_type_high_resolution_Excitatory.neurons-only"))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_UPR_92", "cell_type_high_resolution", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_cell_type_high_resolution_Excitatory.neurons-only"))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_OXPHOS_119_KEGG", "neuronal.exttype", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_neuronal.exttype_Excitatory.neurons-only"))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_UPR_92", "neuronal.exttype", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_neuronal.exttype_Excitatory.neurons-only"))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_OXPHOS_119_KEGG", "msex", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_msex_Excitatory.neurons-only"))
+```
+
+```{r}
+a <- data.seurat.exc$AUC_OXPHOS_119_KEGG[data.seurat.exc$msex == "0"]
+b <- data.seurat.exc$AUC_OXPHOS_119_KEGG[data.seurat.exc$msex == "1"]
+t.test(a,b)
+wilcox.test(a,b)
+message("Mean msex_0 = ", mean(a))
+message("Mean msex_1 = ", mean(b))
+message("Fold-Change = ", mean(b) / mean(a))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_UPR_92", "msex", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_msex_Excitatory.neurons-only"))
+```
+
+```{r}
+a <- data.seurat.exc$AUC_UPR_92[data.seurat.exc$msex == "0"]
+b <- data.seurat.exc$AUC_UPR_92[data.seurat.exc$msex == "1"]
+t.test(a,b)
+wilcox.test(a,b)
+message("Mean msex_0 = ", mean(a))
+message("Mean msex_1 = ", mean(b))
+message("Fold-Change = ", mean(b) / mean(a))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_OXPHOS_119_KEGG", "clinicalDiag", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_clinicalDiag_Excitatory.neurons-only"))
+```
+
+```{r}
+a <- data.seurat.exc$AUC_OXPHOS_119_KEGG[data.seurat.exc$clinicalDiag == "no dementia"]
+b <- data.seurat.exc$AUC_OXPHOS_119_KEGG[data.seurat.exc$clinicalDiag == "AD dementia"]
+t.test(a,b)
+wilcox.test(a,b)
+message("Mean clinicalDiag_no_dementia = ", mean(a))
+message("Mean clinicalDiag_AD_dementia = ", mean(b))
+message("Fold-Change = ", mean(b) / mean(a))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_UPR_92", "clinicalDiag", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_clinicalDiag_Excitatory.neurons-only"))
+```
+
+```{r}
+a <- data.seurat.exc$AUC_UPR_92[data.seurat.exc$clinicalDiag == "no dementia"]
+b <- data.seurat.exc$AUC_UPR_92[data.seurat.exc$clinicalDiag == "AD dementia"]
+t.test(a,b)
+wilcox.test(a,b)
+message("Mean clinicalDiag_no_dementia = ", mean(a))
+message("Mean clinicalDiag_AD_dementia = ", mean(b))
+message("Fold-Change = ", mean(b) / mean(a))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_OXPHOS_119_KEGG", "pathAD", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_pathAD_Excitatory.neurons-only"))
+```
+
+```{r}
+a <- data.seurat.exc$AUC_OXPHOS_119_KEGG[data.seurat.exc$pathAD == "non-AD"]
+b <- data.seurat.exc$AUC_OXPHOS_119_KEGG[data.seurat.exc$pathAD == "AD"]
+t.test(a,b)
+wilcox.test(a,b)
+message("Mean pathAD_non-AD = ", mean(a))
+message("Mean pathAD_AD = ", mean(b))
+message("Fold-Change = ", mean(b) / mean(a))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_UPR_92", "pathAD", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_pathAD_Excitatory.neurons-only"))
+```
+
+```{r}
+a <- data.seurat.exc$AUC_UPR_92[data.seurat.exc$pathAD == "non-AD"]
+b <- data.seurat.exc$AUC_UPR_92[data.seurat.exc$pathAD == "AD"]
+t.test(a,b)
+wilcox.test(a,b)
+message("Mean pathAD_non-AD = ", mean(a))
+message("Mean pathAD_AD = ", mean(b))
+message("Fold-Change = ", mean(b) / mean(a))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_OXPHOS_119_KEGG", "pmi", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_pmi_Excitatory.neurons-only"))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_UPR_92", "pmi", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_pmi_Excitatory.neurons-only"))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_OXPHOS_119_KEGG", "age_death", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_age_death_Excitatory.neurons-only"))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "AUC_UPR_92", "age_death", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_age_death_Excitatory.neurons-only"))
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat.exc@meta.data, "AUC_OXPHOS_119_KEGG", "cell_type_high_resolution", "msex", pwidth = 10, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_msex_by_cell_type_high_resolution_Excitatory.neurons-only"))
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat.exc@meta.data, "AUC_OXPHOS_119_KEGG", "cell_type_high_resolution", "clinicalDiag", pwidth = 10, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_clinicalDiag_by_cell_type_high_resolution_Excitatory.neurons-only"))
+
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat.exc@meta.data, "AUC_OXPHOS_119_KEGG", "cell_type_high_resolution", "pathAD", pwidth = 10, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_pathAD_by_cell_type_high_resolution_Excitatory.neurons-only"))
+
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat.exc@meta.data, "AUC_OXPHOS_119_KEGG", "cell_type_high_resolution", "pmi", pwidth = 20, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_pmi_by_cell_type_high_resolution_Excitatory.neurons-only"))
+
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat.exc@meta.data, "AUC_OXPHOS_119_KEGG", "cell_type_high_resolution", "age_death", pwidth = 15, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_age_death_by_cell_type_high_resolution_Excitatory.neurons-only"))
+
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat.exc@meta.data, "AUC_UPR_92", "cell_type_high_resolution", "msex", pwidth = 10, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_msex_by_cell_type_high_resolution_Excitatory.neurons-only"))
+
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat.exc@meta.data, "AUC_UPR_92", "cell_type_high_resolution", "clinicalDiag", pwidth = 10, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_clinicalDiag_by_cell_type_high_resolution_Excitatory.neurons-only"))
+
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat.exc@meta.data, "AUC_UPR_92", "cell_type_high_resolution", "pathAD", pwidth = 10, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_pathAD_by_cell_type_high_resolution_Excitatory.neurons-only"))
+
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat.exc@meta.data, "AUC_UPR_92", "cell_type_high_resolution", "pmi", pwidth = 20, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_pmi_by_cell_type_high_resolution_Excitatory.neurons-only"))
+
+```
+
+```{r}
+plot.boxplot.aucell.2(data.seurat.exc@meta.data, "AUC_UPR_92", "cell_type_high_resolution", "age_death", pwidth = 15, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_age_death_by_cell_type_high_resolution_Excitatory.neurons-only"))
 ```
 
 ### UMAP
@@ -333,5 +638,99 @@ p
 p <- FeaturePlot(data.seurat.exc, reduction = "umap", features = "AUC_UPR_92", raster = F)
 ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_AUC_UPR_92.pdf"), plot = p, width = 10, height = 10, bg = "white")
 ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_AUC_UPR_92.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
+p
+```
+
+### ATF4 regulon
+
+Import results from pySCENIC pipeline
+
+```{r}
+data.regulon <- fread("./data/Kellis_2024/Kellis_region_regulons_aucell.tsv", sep = "\t", data.table = F)
+rownames(data.regulon) <- data.regulon$Cell
+data.regulon.binarized <- fread("./data/Kellis_2024/Kellis_region_regulons_aucell_binarized.tsv", sep = "\t", data.table = F)
+rownames(data.regulon.binarized) <- data.regulon.binarized$Cell
+```
+
+Add to Seurat object
+
+```{r}
+data.seurat.exc$ATF4_regulon <- data.regulon[colnames(data.seurat.exc), "ATF4(+)"]
+data.seurat.exc$ATF4_regulon_binarized <- data.regulon.binarized[colnames(data.seurat.exc), "ATF4(+)"]
+```
+
+### Boxplots
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "ATF4_regulon", "cell_type_high_resolution", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "ATF4_regulon_AUCell_ordered_boxplot_cell_type_high_resolution_Excitatory.neurons-only"))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "ATF4_regulon", "neuronal.exttype", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "ATF4_regulon_AUCell_ordered_boxplot_neuronal.exttype_Excitatory.neurons-only"))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "ATF4_regulon", "msex", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "ATF4_regulon_AUCell_ordered_boxplot_msex_Excitatory.neurons-only"))
+```
+
+```{r}
+a <- data.seurat.exc$ATF4_regulon[data.seurat.exc$msex == "0"]
+b <- data.seurat.exc$ATF4_regulon[data.seurat.exc$msex == "1"]
+t.test(a,b)
+wilcox.test(a,b)
+message("Mean msex_0 = ", mean(a))
+message("Mean msex_1 = ", mean(b))
+message("Fold-Change = ", mean(b) / mean(a))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "ATF4_regulon", "clinicalDiag", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "ATF4_regulon_AUCell_ordered_boxplot_clinicalDiag_Excitatory.neurons-only"))
+```
+
+```{r}
+a <- data.seurat.exc$ATF4_regulon[data.seurat.exc$clinicalDiag == "no dementia"]
+b <- data.seurat.exc$ATF4_regulon[data.seurat.exc$clinicalDiag == "AD dementia"]
+t.test(a,b)
+wilcox.test(a,b)
+message("Mean clinicalDiag_no_dementia = ", mean(a))
+message("Mean clinicalDiag_AD_dementia = ", mean(b))
+message("Fold-Change = ", mean(b) / mean(a))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "ATF4_regulon", "pathAD", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "ATF4_regulon_AUCell_ordered_boxplot_pathAD_Excitatory.neurons-only"))
+```
+
+```{r}
+a <- data.seurat.exc$ATF4_regulon[data.seurat.exc$pathAD == "non-AD"]
+b <- data.seurat.exc$ATF4_regulon[data.seurat.exc$pathAD == "AD"]
+t.test(a,b)
+wilcox.test(a,b)
+message("Mean clinicalDiag_nn-AD = ", mean(a))
+message("Mean clinicalDiag_AD = ", mean(b))
+message("Fold-Change = ", mean(b) / mean(a))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "ATF4_regulon", "pmi", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "ATF4_regulon_AUCell_ordered_boxplot_pmi_Excitatory.neurons-only"))
+```
+
+```{r}
+plot.boxplot.aucell(data.seurat.exc@meta.data, "ATF4_regulon", "age_death", pwidth = 5, pheight = 7, filename = paste0(output_figure_prefix, "ATF4_regulon_AUCell_ordered_boxplot_age_death_Excitatory.neurons-only"))
+```
+
+### UMAPs
+
+```{r fig.width=10, fig.height=10}
+p <- FeaturePlot(data.seurat.exc, reduction = "umap", features = "ATF4_regulon", raster = F)
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_ATF4_regulon.pdf"), plot = p, width = 10, height = 10, bg = "white")
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_ATF4_regulon.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
+p
+```
+
+```{r fig.width=10, fig.height=10}
+p <- FeaturePlot(data.seurat.exc, reduction = "umap", features = "ATF4_regulon_binarized", raster = F)
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_ATF4_regulon_binarized.pdf"), plot = p, width = 10, height = 10, bg = "white")
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_ATF4_regulon_binarized.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
 p
 ```

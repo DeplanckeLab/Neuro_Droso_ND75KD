@@ -76,14 +76,11 @@ list.annotations <- list.annotations[list.annotations != "unannotated"]
 data.seurat <- SetIdent(data.seurat, value = "annotation")
 all.de.genes <- data.frame()
 for(annotation in list.annotations){
-  markers <- FindMarkers(data.seurat, ident.1 = "Pan_neuro_ND75KD", ident.2 = "Pan_neuro_control", test.use = "wilcox", group.by = "orig.ident", subset.ident = annotation)
-  markers <- markers[abs(markers$avg_log2FC) > 0.5 & markers$p_val_adj <= 0.05,]
-  if(nrow(markers > 0)){
-    markers$gene <- rownames(markers)
-    markers$annotation <- annotation
-    rownames(markers) <- NULL
-    all.de.genes <- rbind(all.de.genes, markers)
-  }
+  markers <- FindMarkers(data.seurat, ident.1 = "Pan_neuro_ND75KD", ident.2 = "Pan_neuro_control", test.use = "wilcox", group.by = "orig.ident", subset.ident = annotation, features = c("ND-75", "Ldh"))
+  markers$gene <- rownames(markers)
+  markers$annotation <- annotation
+  rownames(markers) <- NULL
+  all.de.genes <- rbind(all.de.genes, markers)
 }
 sort(table(all.de.genes$annotation))
 sort(table(all.de.genes$gene))
