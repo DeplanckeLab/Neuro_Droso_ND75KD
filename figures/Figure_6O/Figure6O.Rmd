@@ -1,0 +1,112 @@
+---
+project: "Emma Pan Neuro (Control + ND75KD)"
+author: "Vincent Gardeux"
+date: "2025/06/06"
+last_modified: "2025/06/06"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
+#setwd("/data/gardeux/Neuro_Droso_ND75KD/")
+```
+
+## Libraries & functions
+
+First, I'm loading the required libraries & functions
+
+```{r}
+suppressPackageStartupMessages(library(Seurat)) # Seurat v5 is needed here
+suppressPackageStartupMessages(library(BPCells)) # For handling big scRNAseq data in Seurat
+suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
+suppressPackageStartupMessages(library(ggplot2)) # For plotting
+suppressPackageStartupMessages(library(ggpubr)) # For grid plotting
+suppressPackageStartupMessages(library(plotly)) # For interactive plots
+suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
+
+cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("SeuratObject"), "version", as.character(packageVersion("SeuratObject")), "\n")
+cat(bold("BPCells"), "version", as.character(packageVersion("BPCells")), "\n")
+cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
+cat(bold("ggplot2"), "version", as.character(packageVersion("ggplot2")), "\n")
+cat(bold("ggpubr"), "version", as.character(packageVersion("ggpubr")), "\n")
+cat(bold("plotly"), "version", as.character(packageVersion("plotly")), "\n")
+
+# Random seed
+set.seed(42)
+```
+
+## Parameters
+
+*Paper:* https://www.nature.com/articles/s41586-024-07606-7
+
+*Data repo:* Synapse
+
+```{r}
+## Parameters
+input_seurat_object <- "./data/Kellis_2024/Gene Expression (snRNAseq - 10x) processed, multi-region/all_brain_regions_filt_preprocessed_scanpy_fullmatrix_excitatory.neurons.only.rds"
+output_figure_prefix <- "./figures/Figure_6O/Kellis_"
+```
+
+## Functions
+
+```{r}
+plot.boxplot.aucell <- function(data.metadata, auc.name, metadata.name, pwidth = 5, pheight = 7, filename = NULL) {
+  # Remove rows with NA in the metadata column
+  boxplot_data <- data.metadata[!is.na(data.metadata[[metadata.name]]), ]
+
+  # Calculate median values of AUC per group
+  median_values <- tapply(boxplot_data[[auc.name]], boxplot_data[[metadata.name]], median)
+
+  # Reorder factor levels of metadata based on median AUC
+  boxplot_data[[metadata.name]] <- factor(boxplot_data[[metadata.name]], levels = names(sort(median_values, decreasing = FALSE)))
+
+  # Plot
+  p <- ggplot(boxplot_data, aes(x = .data[[metadata.name]], y = .data[[auc.name]])) +
+    geom_boxplot(fill = "lightgrey") +
+    labs(x = metadata.name, y = auc.name, title = metadata.name) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), legend.position = "none")
+
+  # Save plots
+  if(is.null(filename)) filename <- paste0(output_figure_prefix, auc.name, "_AUCell_ordered_boxplot_", metadata.name)
+  ggsave(paste0(filename, ".pdf"), plot = p, width = pwidth, height = pheight, bg = "white")
+  ggsave(paste0(filename, ".png"), plot = p, width = pwidth, height = pheight, dpi = 1000, bg = "white")
+
+  return(p)
+}
+```
+
+## I. Loading previously generated Seurat object (436K cells)
+
+```{r}
+data.seurat <- readRDS(input_seurat_object)
+data.seurat
+```
+
+## II. ATF4 regulon
+
+Import results from pySCENIC pipeline
+
+```{r}
+data.regulon <- fread("./data/Kellis_2024/Kellis_region_regulons_aucell.tsv", sep = "\t", data.table = F)
+rownames(data.regulon) <- data.regulon$Cell
+data.regulon.binarized <- fread("./data/Kellis_2024/Kellis_region_regulons_aucell_binarized.tsv", sep = "\t", data.table = F)
+rownames(data.regulon.binarized) <- data.regulon.binarized$Cell
+```
+
+Add to Seurat object
+
+```{r}
+data.seurat$ATF4_regulon <- data.regulon[colnames(data.seurat), "ATF4(+)"]
+data.seurat$ATF4_regulon_binarized <- data.regulon.binarized[colnames(data.seurat), "ATF4(+)"]
+```
+
+## III. Boxplots
+
+```{r fig.width=5, fig.height=4}
+plot.boxplot.aucell(data.seurat@meta.data, "ATF4_regulon", "cell_type_high_resolution", pwidth = 5, pheight = 4, filename = paste0(output_figure_prefix, "ATF4_regulon_AUCell_ordered_boxplot_cell_type_high_resolution_Excitatory.neurons-only"))
+```

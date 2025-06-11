@@ -4,7 +4,7 @@ data/*.loom
 data/*.h5ad
 preprocessing/*.html
 .ipynb_checkpoints
-data/Martirosyan_2024/Martirosyan.rds
+data/Martirosyan_2024/*.rds
 *.feather
 *.tbl
 data/Martirosyan_2024/Martirosyan_motifs.tsv
