@@ -1,6 +1,5 @@
 ---
 title: "Emma Pan Neuro (Control + ND75KD)"
-description: "Figure 4C"
 author: "Vincent Gardeux"
 date: "2025/01/31"
 updated: "2025/01/31"
@@ -51,7 +50,7 @@ set.seed(42)
 
 ```{r}
 input_seurat_object <- "./data/Pan_neuro_integrated_FINAL.rds"
-output_figure_prefix <- "./figures/Figure_4C/"
+output_figure_prefix <- "./figures/Figure_3A/"
 ```
 
 ## I. Reading Seurat object
