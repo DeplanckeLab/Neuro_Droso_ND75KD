@@ -51,7 +51,7 @@ set.seed(42)
 
 ```{r}
 input_seurat_object <- "./data/Pan_neuro_integrated_FINAL.rds"
-output_figure_prefix <- "./figures/Figure_5A/"
+output_figure_prefix <- "./figures/Figure_4B/"
 ```
 
 ## I. Reading Seurat object
