@@ -1,9 +1,8 @@
 ---
 title: "Emma Pan Neuro (Control + ND75KD)"
-description: "Figure 5A"
 author: "Vincent Gardeux"
 date: "2025/01/31"
-updated: "2025/01/31"
+updated: "2025/02/12"
 output:
   html_document:
     df_print: paged
@@ -72,16 +71,16 @@ message(nrow(data.seurat), " genes were loaded")
 # Extracting the relevant metadata
 boxplot_data <- as.data.frame(data.seurat@meta.data)
 
-# Calculating median values of "AUC_OXPHOS_117_Flybase" for each group
-median_values <- tapply(boxplot_data$AUC_OXPHOS_117_Flybase, boxplot_data$annotation_clusters, median)
+# Calculating median values of "AUC_OXPHOS_68_Porcelli" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_68_Porcelli, boxplot_data$annotation_clusters, median)
 
 # Sorting the metadata based on median values
 boxplot_data$annotation_clusters <- factor(boxplot_data$annotation_clusters, levels = names(sort(median_values, decreasing = F)))
 
 # Plot
-p <- ggplot(boxplot_data, aes(x = annotation_clusters, y = AUC_OXPHOS_117_Flybase, fill = annotation_clusters)) +
+p <- ggplot(boxplot_data, aes(x = annotation_clusters, y = AUC_OXPHOS_68_Porcelli, fill = annotation_clusters)) +
   geom_boxplot() +
-  labs(x = NULL, y = "AUC_OXPHOS_117_Flybase") +
+  labs(x = NULL, y = "AUC_OXPHOS_68_Porcelli") +
   #theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   #scale_fill_manual(values = annotatedClusterPalette) +
@@ -89,12 +88,11 @@ p <- ggplot(boxplot_data, aes(x = annotation_clusters, y = AUC_OXPHOS_117_Flybas
   NoLegend()
 
 p
-
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_117_ordered_boxplot.pdf"), width = 15, height = 5, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_117_ordered_boxplot.png"), width = 15, height = 5, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_68_ordered_boxplot.pdf"), width = 15, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_68_ordered_boxplot.png"), width = 15, height = 5, dpi = 1000, bg = 'white')
 ```
 
 ## Boxplot (Control only)
@@ -106,16 +104,16 @@ boxplot_data <- as.data.frame(data.seurat[,data.seurat$orig.ident == "Pan_neuro_
 # Filter out <5 cells per annotation
 boxplot_data <- boxplot_data[boxplot_data$seurat_clusters %in% names(which(table(boxplot_data$seurat_clusters) >= 5)),]
 
-# Calculating median values of "AUC_OXPHOS_117_Flybase" for each group
-median_values <- tapply(boxplot_data$AUC_OXPHOS_117_Flybase, boxplot_data$annotation_clusters, median)
+# Calculating median values of "AUC_OXPHOS_68_Porcelli" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_68_Porcelli, boxplot_data$annotation_clusters, median)
 
 # Sorting the metadata based on median values
 boxplot_data$annotation_clusters <- factor(boxplot_data$annotation_clusters, levels = names(sort(median_values, decreasing = F)))
 
 # Plot
-p <- ggplot(boxplot_data, aes(x = annotation_clusters, y = AUC_OXPHOS_117_Flybase, fill = annotation_clusters)) +
+p <- ggplot(boxplot_data, aes(x = annotation_clusters, y = AUC_OXPHOS_68_Porcelli, fill = annotation_clusters)) +
   geom_boxplot() +
-  labs(x = NULL, y = "AUC_OXPHOS_117_Flybase") +
+  labs(x = NULL, y = "AUC_OXPHOS_68_Porcelli") +
   #theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   #scale_fill_manual(values = annotatedClusterPalette) +
@@ -123,12 +121,11 @@ p <- ggplot(boxplot_data, aes(x = annotation_clusters, y = AUC_OXPHOS_117_Flybas
   NoLegend()
 
 p
-
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_117_ordered_boxplot_control-only.pdf"), width = 15, height = 5, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_117_ordered_boxplot_control-only.png"), width = 15, height = 5, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_68_ordered_boxplot_control-only.pdf"), width = 15, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_68_ordered_boxplot_control-only.png"), width = 15, height = 5, dpi = 1000, bg = 'white')
 ```
 
 ## Boxplot (ND-75 KD only)
@@ -140,16 +137,16 @@ boxplot_data <- as.data.frame(data.seurat[,data.seurat$orig.ident == "Pan_neuro_
 # Filter out <5 cells per annotation
 boxplot_data <- boxplot_data[boxplot_data$seurat_clusters %in% names(which(table(boxplot_data$seurat_clusters) >= 5)),]
 
-# Calculating median values of "AUC_OXPHOS_117_Flybase" for each group
-median_values <- tapply(boxplot_data$AUC_OXPHOS_117_Flybase, boxplot_data$annotation_clusters, median)
+# Calculating median values of "AUC_OXPHOS_68_Porcelli" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_68_Porcelli, boxplot_data$annotation_clusters, median)
 
 # Sorting the metadata based on median values
 boxplot_data$annotation_clusters <- factor(boxplot_data$annotation_clusters, levels = names(sort(median_values, decreasing = F)))
 
 # Plot
-p <- ggplot(boxplot_data, aes(x = annotation_clusters, y = AUC_OXPHOS_117_Flybase, fill = annotation_clusters)) +
+p <- ggplot(boxplot_data, aes(x = annotation_clusters, y = AUC_OXPHOS_68_Porcelli, fill = annotation_clusters)) +
   geom_boxplot() +
-  labs(x = NULL, y = "AUC_OXPHOS_117_Flybase") +
+  labs(x = NULL, y = "AUC_OXPHOS_68_Porcelli") +
   #theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   #scale_fill_manual(values = annotatedClusterPalette) +
@@ -157,10 +154,9 @@ p <- ggplot(boxplot_data, aes(x = annotation_clusters, y = AUC_OXPHOS_117_Flybas
   NoLegend()
 
 p
-
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_117_ordered_boxplot_nd75kd-only.pdf"), width = 15, height = 5, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_117_ordered_boxplot_nd75kd-only.png"), width = 15, height = 5, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_68_ordered_boxplot_nd75kd-only.pdf"), width = 15, height = 5, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, "Oxphos_68_ordered_boxplot_nd75kd-only.png"), width = 15, height = 5, dpi = 1000, bg = 'white')
 ```
