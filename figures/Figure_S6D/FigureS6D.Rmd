@@ -48,7 +48,7 @@ set.seed(42)
 ```{r}
 ## Parameters
 input_seurat_object <- "./data/Kellis_2024/Gene Expression (snRNAseq - 10x) processed, multi-region/all_brain_regions_filt_preprocessed_scanpy_fullmatrix_excitatory.neurons.only.rds"
-output_figure_prefix <- "./figures/Figure_6R/Kellis_"
+output_figure_prefix <- "./figures/Figure_S6D/Kellis_"
 ```
 
 ## Functions

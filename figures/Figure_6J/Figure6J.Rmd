@@ -61,8 +61,8 @@ data.seurat
 ## II. Plot
 
 ```{r fig.width=10, fig.height=10}
-p <- DimPlot(data.seurat, reduction = "umap", label = T, group.by = "cell_type_high_resolution", raster = T) + NoLegend()
-ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_cell_type_high_resolution.pdf"), plot = p, width = 10, height = 10, bg = "white")
-ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_cell_type_high_resolution.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
+p <- FeaturePlot(data.seurat, reduction = "umap", label = F, features = "AUC_OXPHOS_119_KEGG", raster = T) + NoLegend()
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_AUC_OXPHOS_119_KEGG.pdf"), plot = p, width = 10, height = 10, bg = "white")
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_AUC_OXPHOS_119_KEGG.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
 p
 ```

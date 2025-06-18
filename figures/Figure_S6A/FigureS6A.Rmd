@@ -1,0 +1,68 @@
+---
+project: "Emma Pan Neuro (Control + ND75KD)"
+author: "Vincent Gardeux"
+date: "2025/06/04"
+last_modified: "2025/06/04"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
+#setwd("/data/gardeux/Neuro_Droso_ND75KD/")
+```
+
+## Libraries & functions
+
+First, I'm loading the required libraries & functions
+
+```{r}
+suppressPackageStartupMessages(library(Seurat)) # Seurat v5 is needed here
+suppressPackageStartupMessages(library(BPCells)) # For handling big scRNAseq data in Seurat
+suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
+suppressPackageStartupMessages(library(ggplot2)) # For plotting
+suppressPackageStartupMessages(library(ggpubr)) # For grid plotting
+suppressPackageStartupMessages(library(plotly)) # For interactive plots
+suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
+
+cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("SeuratObject"), "version", as.character(packageVersion("SeuratObject")), "\n")
+cat(bold("BPCells"), "version", as.character(packageVersion("BPCells")), "\n")
+cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
+cat(bold("ggplot2"), "version", as.character(packageVersion("ggplot2")), "\n")
+cat(bold("ggpubr"), "version", as.character(packageVersion("ggpubr")), "\n")
+cat(bold("plotly"), "version", as.character(packageVersion("plotly")), "\n")
+
+# Random seed
+set.seed(42)
+```
+
+## Parameters
+
+*Paper:* https://www.nature.com/articles/s41586-024-07606-7
+
+*Data repo:* Synapse
+
+```{r}
+## Parameters
+input_seurat_object <- "./data/Kellis_2024/Gene Expression (snRNAseq - 10x) processed, multi-region/all_brain_regions_filt_preprocessed_scanpy_fullmatrix_excitatory.neurons.only.rds"
+output_figure_prefix <- "./figures/Figure_S6A/Kellis_"
+```
+
+## I. Loading previously generated Seurat object (436K cells)
+
+```{r}
+data.seurat <- readRDS(input_seurat_object)
+data.seurat
+```
+
+## II. Plot
+
+```{r fig.width=10, fig.height=10}
+p <- DimPlot(data.seurat, reduction = "umap", label = T, group.by = "cell_type_high_resolution", raster = T) + NoLegend()
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_cell_type_high_resolution.pdf"), plot = p, width = 10, height = 10, bg = "white")
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_cell_type_high_resolution.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
+p
+```
