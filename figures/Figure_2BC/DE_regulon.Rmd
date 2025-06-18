@@ -52,7 +52,7 @@ set.seed(42)
 
 ```{r}
 input_seurat_object <- "./data/Pan_neuro_integrated_FINAL.rds"
-output_figure_prefix <- "./figures/Figure_2HI/Volcano_plot_regulons"
+output_figure_prefix <- "./figures/Figure_2BC/Volcano_plot_regulons"
 SCENIC_regulons_path <- "./data/Pan_neuro_integrated_regulons_aucell.tsv"
 marker_regulon_output <- "./data/Pan_neuro_integrated_markers_regulons"
 ```

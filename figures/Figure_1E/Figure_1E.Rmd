@@ -1,6 +1,6 @@
 ---
 title: "Emma Pan Neuro (Control + ND75KD)"
-description: "Figure 4A"
+description: "Figure 1E"
 author: "Vincent Gardeux"
 date: "2024/08/12"
 updated: "2025/01/24"

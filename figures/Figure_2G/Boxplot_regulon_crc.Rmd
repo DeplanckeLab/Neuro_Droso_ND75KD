@@ -1,9 +1,8 @@
 ---
 title: "Emma Pan Neuro (Control + ND75KD)"
-description: "Figure 3A"
 author: "Vincent Gardeux"
 date: "2025/01/24"
-updated: "2025/01/24"
+updated: "2025/02/14"
 output:
   html_document:
     df_print: paged
@@ -25,6 +24,7 @@ suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/software/Seurat
 suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
 suppressPackageStartupMessages(library(ggplot2)) # For plotting
 suppressPackageStartupMessages(library(ggpubr)) # For grid plotting
+suppressPackageStartupMessages(library(ggsignif)) # For grid plotting
 suppressPackageStartupMessages(library(plotly)) # For interactive plots
 suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
 
@@ -33,6 +33,7 @@ cat(bold("SeuratObject"), "version", as.character(packageVersion("SeuratObject")
 cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
 cat(bold("ggplot2"), "version", as.character(packageVersion("ggplot2")), "\n")
 cat(bold("ggpubr"), "version", as.character(packageVersion("ggpubr")), "\n")
+cat(bold("ggsignif"), "version", as.character(packageVersion("ggsignif")), "\n")
 cat(bold("plotly"), "version", as.character(packageVersion("plotly")), "\n")
 
 # Color-blind friendly palette 3-colors
@@ -51,7 +52,7 @@ set.seed(42)
 
 ```{r}
 input_seurat_object <- "./data/Pan_neuro_integrated_FINAL.rds"
-output_figure_prefix <- "./figures/Figure_3A/"
+output_figure_prefix <- "./figures/Figure_2G/Boxplot_Regulon_crc"
 ```
 
 ## I. Reading Seurat object
@@ -65,72 +66,56 @@ message(ncol(data.seurat), " cells were loaded")
 message(nrow(data.seurat), " genes were loaded")
 ```
 
-## Regulon UMAP plots
+# Preparing data for boxplot
 
-```{r, fig.height = 12, fig.width = 12}
-p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "SCENIC_crc_activating_regulon", order = T) + NoLegend()
+```{r}
+# Extract the relevant data
+data.boxplot <- FetchData(data.seurat, vars = c("seurat_clusters", "SCENIC_crc_activating_regulon"))
+
+# Filter for clusters 2 and 23
+data.boxplot <- subset(data.boxplot, seurat_clusters %in% c(2, 23))
+
+# Convert clusters to a factor for better plotting
+data.boxplot$seurat_clusters <- factor(data.boxplot$seurat_clusters, levels = c(2, 23))
+```
+
+# Statistical analysis
+
+```{r}
+stats <- wilcox.test(data.boxplot$SCENIC_crc_activating_regulon[data.boxplot$seurat_clusters == 2], data.boxplot$SCENIC_crc_activating_regulon[data.boxplot$seurat_clusters == 23])
+stats
+```
+
+# Plotting
+
+```{r, fig.height = 4, fig.width = 2}
+# Determine the number of asterisks based on the p-value
+significance_label <- ifelse( # This is ugly
+  stats$p.value > 0.05, "ns",
+  ifelse(stats$p.value <= 0.0001, "****",
+         ifelse(stats$p.value <= 0.001, "***",
+                ifelse(stats$p.value <= 0.01, "**", "*")))
+)
+
+p <- ggplot(data.boxplot, aes(x = seurat_clusters, y = SCENIC_crc_activating_regulon, fill = seurat_clusters)) +
+  geom_boxplot() +
+  scale_fill_manual(values = clusterPalette) +
+  labs(y = "SCENIC_crc_activating_regulon") +
+  theme_minimal() +
+  NoLegend() +
+  geom_signif(size = 0.5, textsize = 4,
+    comparisons = list(c("2", "23")), # Specify the clusters being compared
+    annotations = significance_label, # Add star if significant
+    y_position = max(data.boxplot$SCENIC_crc_activating_regulon) + 0.05 * max(data.boxplot$SCENIC_crc_activating_regulon), # Position above the boxes
+    tip_length = 0.02
+  )
 p
 ```
 
 ```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "Regulon_UMAP_crc_regulon.pdf"), width = 12, height = 12, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "Regulon_UMAP_crc_regulon.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
+ggsave(p, filename = paste0(output_figure_prefix, ".pdf"), width = 2, height = 4, bg = "white")
+ggsave(p, filename = paste0(output_figure_prefix, ".png"), width = 2, height = 4, dpi = 1000, bg = 'white')
 ```
 
-```{r, fig.height = 12, fig.width = 12}
-p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "SCENIC_crc_activating_regulon_binarized", order = T) + NoLegend()
-p
-```
-
-```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "Regulon_UMAP_crc_regulon_binarized.pdf"), width = 12, height = 12, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "Regulon_UMAP_crc_regulon_binarized.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
-```
-
-# Smaller
-
-```{r, fig.height = 4, fig.width = 4}
-p <- FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", pt.size = 0.5, features = "SCENIC_crc_activating_regulon_binarized", order = T) + NoLegend()
-p
-```
-
-```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "Regulon_UMAP_crc_regulon_binarized_small.pdf"), width = 4, height = 4, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "Regulon_UMAP_crc_regulon_binarized_small.png"), width = 4, height = 4, dpi = 1000, bg = 'white')
-```
-
-## UMAP plots
-
-```{r, fig.height = 12, fig.width = 12}
-p <- FeaturePlot(data.seurat, reduction = "umap_harmony", pt.size = 0.5, features = "SCENIC_crc_activating_regulon", order = T) + NoLegend()
-p
-```
-
-```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "UMAP_crc_regulon.pdf"), width = 12, height = 12, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "UMAP_crc_regulon.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
-```
-
-```{r, fig.height = 12, fig.width = 12}
-p <- FeaturePlot(data.seurat, reduction = "umap_harmony", pt.size = 0.5, features = "SCENIC_crc_activating_regulon_binarized", order = T) + NoLegend()
-p
-```
-
-```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "UMAP_crc_regulon_binarized.pdf"), width = 12, height = 12, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "UMAP_crc_regulon_binarized.png"), width = 12, height = 12, dpi = 1000, bg = 'white')
-```
-
-# Smaller
-
-```{r, fig.height = 4, fig.width = 4}
-p <- FeaturePlot(data.seurat, reduction = "umap_harmony", pt.size = 0.5, features = "SCENIC_crc_activating_regulon_binarized", order = T) + NoLegend()
-p
-```
-
-```{r}
-ggsave(p, filename = paste0(output_figure_prefix, "UMAP_crc_regulon_binarized_small.pdf"), width = 4, height = 4, bg = "white")
-ggsave(p, filename = paste0(output_figure_prefix, "UMAP_crc_regulon_binarized_small.png"), width = 4, height = 4, dpi = 1000, bg = 'white')
-```
 
 
