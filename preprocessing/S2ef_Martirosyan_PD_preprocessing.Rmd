@@ -7,7 +7,7 @@ output:
   html_document:
     df_print: paged
 ---
-  
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
@@ -168,7 +168,7 @@ hist(data.seurat$AUC_OXPHOS_135_KEGG, breaks = 100)
 
 ### II.2.b Plot Boxplot OXPHOS
 
-```{r, fig.width=5,fig.height=5}
+```{r fig.width=5, fig.height=5}
 boxplot_data <- data.seurat@meta.data
 
 # Filter out <5 cells per annotation
@@ -204,7 +204,7 @@ hist(data.seurat$AUC_UPR_93_REACTOME, breaks = 100)
 
 ### II.3.b Plot Boxplot UPR
 
-```{r, fig.width=5,fig.height=5}
+```{r fig.width=5, fig.height=5}
 boxplot_data <- data.seurat@meta.data
 
 # Filter out <5 cells per annotation
@@ -234,7 +234,7 @@ FeaturePlot(data.seurat, reduction = "UMAP", features = "AUC_UPR_93_REACTOME")
 
 ### II.4.a Plot Boxplot HSP90AA1
 
-```{r, fig.width=5,fig.height=5}
+```{r fig.width=5, fig.height=5}
 boxplot_data <- data.seurat@meta.data
 boxplot_data$HSP90AA1 <- data.seurat@assays$RNA@data["HSP90AA1",]
 
@@ -265,7 +265,7 @@ FeaturePlot(data.seurat, reduction = "UMAP", features = "HSP90AA1")
 
 ### II.5.a Plot Boxplot HSPA8
 
-```{r, fig.width=5,fig.height=5}
+```{r fig.width=5, fig.height=5}
 boxplot_data <- data.seurat@meta.data
 boxplot_data$HSPA8 <- data.seurat@assays$RNA@data["HSPA8",]
 
@@ -296,7 +296,7 @@ FeaturePlot(data.seurat, reduction = "UMAP", features = "HSPA8")
 
 ### II.6.a Plot Boxplot ATF4
 
-```{r, fig.width=5,fig.height=5}
+```{r fig.width=5, fig.height=5}
 boxplot_data <- data.seurat@meta.data
 boxplot_data$ATF4 <- data.seurat@assays$RNA@data["ATF4",]
 
@@ -356,7 +356,7 @@ for(regulon in colnames(data.scenic)){
 
 ## III.3 Compute UMAP on regulon matrix
 
-```{r, fig.height = 8, fig.width = 12}
+```{r fig.height=8, fig.width=12}
 # Adding whole regulon matrix as an embedding
 # Saving mapping for later
 data.mapping.regulon <- data.frame(regulon = colnames(data.scenic), mapping = paste0("SCENIC_", 1:ncol(data.scenic)))
@@ -401,7 +401,7 @@ for(regulon in colnames(data.scenic)){
 
 ## IV.3 Compute UMAP on binarized regulon matrix
 
-```{r, fig.height = 8, fig.width = 12}
+```{r fig.height=8, fig.width=12}
 # Adding whole binarized regulon matrix as an embedding
 # Saving mapping for later
 data.mapping.regulon_binarized <- data.frame(regulon = colnames(data.scenic), mapping = paste0("SCENIC_", 1:ncol(data.scenic)))
@@ -417,19 +417,19 @@ DimPlot(data.seurat, reduction = "SCENICbinarizedumap", label = TRUE, pt.size = 
 
 ## IV.4 ATF4 regulon
 
-```{r, fig.width=10, fig.height=5}
+```{r fig.width=10, fig.height=5}
 FeaturePlot(data.seurat, reduction = "UMAP", label = F, pt.size = 0.5, features = c("SCENIC_ATF4_activating_regulon", "SCENIC_ATF4_activating_regulon_binarized")) + NoLegend()
 ```
 
-```{r, fig.width=10, fig.height=5}
+```{r fig.width=10, fig.height=5}
 FeaturePlot(data.seurat, reduction = "SCENICumap", label = F, pt.size = 0.5, features = c("SCENIC_ATF4_activating_regulon", "SCENIC_ATF4_activating_regulon_binarized")) + NoLegend()
 ```
 
-```{r, fig.width=10, fig.height=5}
+```{r fig.width=10, fig.height=5}
 FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", label = F, pt.size = 0.5, features = c("SCENIC_ATF4_activating_regulon", "SCENIC_ATF4_activating_regulon_binarized")) + NoLegend()
 ```
 
-```{r, fig.width=5,fig.height=5}
+```{r fig.width=5, fig.height=5}
 boxplot_data <- data.seurat@meta.data
 
 # Filter out <5 cells per annotation
@@ -520,7 +520,7 @@ data.seurat[["UMAP"]] <- CreateDimReducObject(embeddings = as.matrix(data.neuron
 
 #### V.3.1 Compute UMAP on regulon matrix
 
-```{r, fig.height = 5, fig.width = 5}
+```{r fig.height=5, fig.width=5}
 # Capture the non-binarized regulon matrix from metadata
 data.scenic <- data.seurat@meta.data
 data.scenic <- data.scenic[,endsWith(colnames(data.scenic), suffix = "_activating_regulon")]
@@ -536,7 +536,7 @@ DimPlot(data.seurat, reduction = "SCENICumap", label = TRUE, pt.size = 0.5, grou
 
 #### V.3.2 Compute UMAP on binarized regulon matrix
 
-```{r, fig.height = 5, fig.width = 5}
+```{r fig.height=5, fig.width=5}
 # Capture the binarized regulon matrix from metadata
 data.scenic <- data.seurat@meta.data
 data.scenic <- data.scenic[,endsWith(colnames(data.scenic), suffix = "_activating_regulon_binarized")]
@@ -554,11 +554,11 @@ DimPlot(data.seurat, reduction = "SCENICbinarizedumap", label = TRUE, pt.size = 
 
 ### VI.1 Plot author's UMAP
 
-```{r, fig.height = 5, fig.width = 5}
+```{r fig.height=5, fig.width=5}
 DimPlot(data.seurat, reduction = "UMAP", group.by = "IDENT", label = T) + NoLegend()
 ```
 
-```{r, fig.height = 5, fig.width = 5}
+```{r fig.height=5, fig.width=5}
 DimPlot(data.seurat, reduction = "UMAP", group.by = "CLUSTER", label = T) + NoLegend()
 ```
 
@@ -572,7 +572,7 @@ hist(data.seurat$AUC_OXPHOS_135_KEGG, breaks = 100)
 
 #### VI.2.b Plot Boxplot OXPHOS
 
-```{r, fig.width=5,fig.height=5}
+```{r fig.width=5, fig.height=5}
 boxplot_data <- data.seurat@meta.data
 
 # Filter out <5 cells per annotation
@@ -596,15 +596,15 @@ p
 
 #### VI.2.c Plot UMAP OXPHOS
 
-```{r, fig.height = 5, fig.width = 6}
+```{r fig.height=5, fig.width=6}
 FeaturePlot(data.seurat, reduction = "UMAP", features = "AUC_OXPHOS_135_KEGG")
 ```
 
-```{r, fig.height = 5, fig.width = 6}
+```{r fig.height=5, fig.width=6}
 FeaturePlot(data.seurat, reduction = "SCENICumap", features = "AUC_OXPHOS_135_KEGG")
 ```
 
-```{r, fig.height = 5, fig.width = 6}
+```{r fig.height=5, fig.width=6}
 FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = "AUC_OXPHOS_135_KEGG")
 ```
 
@@ -618,7 +618,7 @@ hist(data.seurat$AUC_UPR_93_REACTOME, breaks = 100)
 
 #### IV.3.b Plot Boxplot UPR
 
-```{r, fig.width=5,fig.height=5}
+```{r fig.width=5, fig.height=5}
 boxplot_data <- data.seurat@meta.data
 
 # Filter out <5 cells per annotation
@@ -642,15 +642,15 @@ p
 
 #### VI.3.c Plot UMAP UPR
 
-```{r, fig.height = 5, fig.width = 6}
+```{r fig.height=5, fig.width=6}
 FeaturePlot(data.seurat, reduction = "UMAP", features = "AUC_UPR_93_REACTOME")
 ```
 
-```{r, fig.height = 5, fig.width = 6}
+```{r fig.height=5, fig.width=6}
 FeaturePlot(data.seurat, reduction = "SCENICumap", features = "AUC_UPR_93_REACTOME")
 ```
 
-```{r, fig.height = 5, fig.width = 6}
+```{r fig.height=5, fig.width=6}
 FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = "AUC_UPR_93_REACTOME")
 ```
 
@@ -658,7 +658,7 @@ FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = "AUC_UPR_
 
 #### VI.4.a Plot Boxplot HSP90AA1
 
-```{r, fig.width=5,fig.height=5}
+```{r fig.width=5, fig.height=5}
 boxplot_data <- data.seurat@meta.data
 boxplot_data$HSP90AA1 <- data.seurat@assays$RNA@data["HSP90AA1",]
 
@@ -683,15 +683,15 @@ p
 
 #### VI.4.b Plot UMAP HSP90AA1
 
-```{r, fig.width=6,fig.height=5}
+```{r fig.width=6, fig.height=5}
 FeaturePlot(data.seurat, reduction = "UMAP", features = "HSP90AA1")
 ```
 
-```{r, fig.width=6,fig.height=5}
+```{r fig.width=6, fig.height=5}
 FeaturePlot(data.seurat, reduction = "SCENICumap", features = "HSP90AA1")
 ```
 
-```{r, fig.width=6,fig.height=5}
+```{r fig.width=6, fig.height=5}
 FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = "HSP90AA1")
 ```
 
@@ -699,7 +699,7 @@ FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = "HSP90AA1
 
 #### VI.5.a Plot Boxplot HSPA8
 
-```{r, fig.width=5,fig.height=5}
+```{r fig.width=5, fig.height=5}
 boxplot_data <- data.seurat@meta.data
 boxplot_data$HSPA8 <- data.seurat@assays$RNA@data["HSPA8",]
 
@@ -724,15 +724,15 @@ p
 
 #### VI.5.b Plot UMAP HSPA8
 
-```{r, fig.width=6,fig.height=5}
+```{r fig.width=6, fig.height=5}
 FeaturePlot(data.seurat, reduction = "UMAP", features = "HSPA8")
 ```
 
-```{r, fig.width=6,fig.height=5}
+```{r fig.width=6, fig.height=5}
 FeaturePlot(data.seurat, reduction = "SCENICumap", features = "HSPA8")
 ```
 
-```{r, fig.width=6,fig.height=5}
+```{r fig.width=6, fig.height=5}
 FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = "HSPA8")
 ```
 
@@ -740,7 +740,7 @@ FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = "HSPA8")
 
 #### VI.6.a Plot Boxplot ATF4
 
-```{r, fig.width=5,fig.height=5}
+```{r fig.width=5, fig.height=5}
 boxplot_data <- data.seurat@meta.data
 boxplot_data$ATF4 <- data.seurat@assays$RNA@data["ATF4",]
 
@@ -765,15 +765,15 @@ p
 
 #### VI.6.b Plot UMAP ATF4
 
-```{r, fig.width=6,fig.height=5}
+```{r fig.width=6, fig.height=5}
 FeaturePlot(data.seurat, reduction = "UMAP", features = "ATF4")
 ```
 
-```{r, fig.width=6,fig.height=5}
+```{r fig.width=6, fig.height=5}
 FeaturePlot(data.seurat, reduction = "SCENICumap", features = "ATF4")
 ```
 
-```{r, fig.width=6,fig.height=5}
+```{r fig.width=6, fig.height=5}
 FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = "ATF4")
 ```
 
@@ -781,7 +781,7 @@ FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = "ATF4")
 
 #### VI.7.a Plot Boxplot ATF4 regulon activity
 
-```{r, fig.width=5,fig.height=5}
+```{r fig.width=5, fig.height=5}
 boxplot_data <- data.seurat@meta.data
 
 # Filter out <5 cells per annotation
@@ -805,15 +805,15 @@ p
 
 #### VI.6.b Plot UMAP ATF4 regulon activity
 
-```{r, fig.width=11,fig.height=5}
+```{r fig.width=11, fig.height=5}
 FeaturePlot(data.seurat, reduction = "UMAP", features = c("SCENIC_ATF4_activating_regulon","SCENIC_ATF4_activating_regulon_binarized"))
 ```
 
-```{r, fig.width=11,fig.height=5}
+```{r fig.width=11, fig.height=5}
 FeaturePlot(data.seurat, reduction = "SCENICumap", features = c("SCENIC_ATF4_activating_regulon","SCENIC_ATF4_activating_regulon_binarized"))
 ```
 
-```{r, fig.width=11,fig.height=5}
+```{r fig.width=11, fig.height=5}
 FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("SCENIC_ATF4_activating_regulon","SCENIC_ATF4_activating_regulon_binarized"))
 ```
 
@@ -844,7 +844,7 @@ fwrite(gene.markers.filtered, file = paste0(output_de_folder, "de_genes_filtered
 gene.markers.filtered
 ```
 
-```{r, fig.width=11,fig.height=10}
+```{r fig.width=11, fig.height=10}
 FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("ENO1","KAZN","ATP6V0B","CSMD1","GALNTL6","HSP90AA1", "NEFM", "ALDH1A1", "TUBB2A"), ncol = 3)
 ```
 
@@ -871,7 +871,7 @@ fwrite(regulon.markers.filtered, file = paste0(output_de_folder, "de_regulons_fi
 regulon.markers.filtered
 ```
 
-```{r, fig.width=16,fig.height=15}
+```{r fig.width=16, fig.height=15}
 FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("SCENIC_ENO1_activating_regulon","SCENIC_CYB5R1_activating_regulon","SCENIC_GOT1_activating_regulon","SCENIC_PKM_activating_regulon","SCENIC_TCEAL2_activating_regulon","SCENIC_FOXA1_activating_regulon", "SCENIC_TPI1_activating_regulon", "SCENIC_TCEAL6_activating_regulon", "SCENIC_SOD1_activating_regulon"), ncol = 3)
 ```
 
