@@ -1,8 +1,8 @@
 ---
 project: "Emma Pan Neuro (Control + ND75KD)"
 author: "Vincent Gardeux"
-date: "2025/06/06"
-last_modified: "2025/06/06"
+date: "2025/06/12"
+last_modified: "2025/06/12"
 output:
   html_document:
     df_print: paged
@@ -48,7 +48,7 @@ set.seed(42)
 ```{r}
 ## Parameters
 input_seurat_object <- "./data/Kellis_2024/Gene Expression (snRNAseq - 10x) processed, multi-region/all_brain_regions_filt_preprocessed_scanpy_fullmatrix_excitatory.neurons.only.rds"
-output_figure_prefix <- "./figures/Figure_S6B/Kellis_"
+output_figure_prefix <- "./figures/Figure_S7D/Kellis_"
 ```
 
 ## Functions
@@ -90,8 +90,26 @@ data.seurat <- readRDS(input_seurat_object)
 data.seurat
 ```
 
-## II. Plot
+## II. ATF4 regulon
+
+Import results from pySCENIC pipeline
+
+```{r}
+data.regulon <- fread("./data/Kellis_2024/Kellis_region_regulons_aucell.tsv", sep = "\t", data.table = F)
+rownames(data.regulon) <- data.regulon$Cell
+data.regulon.binarized <- fread("./data/Kellis_2024/Kellis_region_regulons_aucell_binarized.tsv", sep = "\t", data.table = F)
+rownames(data.regulon.binarized) <- data.regulon.binarized$Cell
+```
+
+Add to Seurat object
+
+```{r}
+data.seurat$ATF4_regulon <- data.regulon[colnames(data.seurat), "ATF4(+)"]
+data.seurat$ATF4_regulon_binarized <- data.regulon.binarized[colnames(data.seurat), "ATF4(+)"]
+```
+
+## III. Boxplots
 
 ```{r fig.width=10, fig.height=5}
-plot.boxplot.aucell.2(data.seurat@meta.data, "AUC_OXPHOS_119_KEGG", "cell_type_high_resolution", "age_death", pwidth = 10, pheight = 5, filename = paste0(output_figure_prefix, "AUC_OXPHOS_119_KEGG_AUCell_ordered_boxplot_age_death_by_cell_type_high_resolution_Excitatory.neurons-only"))
+plot.boxplot.aucell.2(data.seurat@meta.data, "ATF4_regulon", "cell_type_high_resolution", "pathAD", pwidth = 10, pheight = 5, filename = paste0(output_figure_prefix, "ATF4_regulon_ordered_boxplot_cell_type_high_resolution_Excitatory.neurons-only"))
 ```

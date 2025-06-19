@@ -1,8 +1,8 @@
 ---
 project: "Emma Pan Neuro (Control + ND75KD)"
 author: "Vincent Gardeux"
-date: "2025/06/06"
-last_modified: "2025/06/06"
+date: "2025/06/04"
+last_modified: "2025/06/04"
 output:
   html_document:
     df_print: paged
@@ -48,39 +48,7 @@ set.seed(42)
 ```{r}
 ## Parameters
 input_seurat_object <- "./data/Kellis_2024/Gene Expression (snRNAseq - 10x) processed, multi-region/all_brain_regions_filt_preprocessed_scanpy_fullmatrix_excitatory.neurons.only.rds"
-output_figure_prefix <- "./figures/Figure_S6C/Kellis_"
-```
-
-## Functions
-
-```{r}
-plot.boxplot.aucell.2 <- function(data.metadata, auc.name, metadata.name, metadata.2.name, pwidth = 5, pheight = 7, filename = NULL) {
-  # Remove rows with NA in the relevant metadata columns
-  boxplot_data <- data.metadata[!is.na(data.metadata[[metadata.name]]) & !is.na(data.metadata[[metadata.2.name]]), ]
-
-  # Calculate median AUC per group (based only on the main grouping)
-  median_values <- tapply(boxplot_data[[auc.name]], boxplot_data[[metadata.name]], median)
-
-  # Reorder factor levels of main grouping
-  boxplot_data[[metadata.name]] <- factor(boxplot_data[[metadata.name]], levels = names(sort(median_values, decreasing = FALSE)))
-  
-  # Ensure the fill variable is a factor
-  boxplot_data[[metadata.2.name]] <- as.factor(boxplot_data[[metadata.2.name]])
-
-  # Plot with grouping
-  p <- ggplot(boxplot_data, aes(x = .data[[metadata.name]], y = .data[[auc.name]], fill = .data[[metadata.2.name]])) +
-    geom_boxplot(position = position_dodge(width = 0.8), outlier.size = 0.5) +
-    labs(x = metadata.name, y = auc.name, fill = metadata.2.name, title = metadata.name) +
-    theme_minimal() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-
-  # Save plots
-  if (is.null(filename)) filename <- paste0(output_figure_prefix, auc.name, "_AUCell_ordered_grouped_boxplot_", metadata.name, "_by_", metadata.2.name)
-  ggsave(paste0(filename, ".pdf"), plot = p, width = pwidth, height = pheight, bg = "white")
-  ggsave(paste0(filename, ".png"), plot = p, width = pwidth, height = pheight, dpi = 1000, bg = "white")
-
-  return(p)
-}
+output_figure_prefix <- "./figures/Figure_S7A/Kellis_"
 ```
 
 ## I. Loading previously generated Seurat object (436K cells)
@@ -92,6 +60,9 @@ data.seurat
 
 ## II. Plot
 
-```{r fig.width=10, fig.height=5}
-plot.boxplot.aucell.2(data.seurat@meta.data, "AUC_UPR_92", "cell_type_high_resolution", "pathAD", pwidth = 10, pheight = 5, filename = paste0(output_figure_prefix, "AUC_UPR_92_AUCell_ordered_boxplot_pathAD_by_cell_type_high_resolution_Excitatory.neurons-only"))
+```{r fig.width=10, fig.height=10}
+p <- DimPlot(data.seurat, reduction = "umap", label = T, group.by = "cell_type_high_resolution", raster = T) + NoLegend()
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_cell_type_high_resolution.pdf"), plot = p, width = 10, height = 10, bg = "white")
+ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_cell_type_high_resolution.png"), plot = p, width = 10, height = 10, dpi = 1000, bg = "white")
+p
 ```
