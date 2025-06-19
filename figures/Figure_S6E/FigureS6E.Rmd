@@ -1,0 +1,76 @@
+---
+project: "Emma Pan Neuro (Control + ND75KD)"
+author: "Vincent Gardeux"
+date: "2025/06/19"
+last_modified: "2025/06/19"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
+#setwd("/data/gardeux/Neuro_Droso_ND75KD/")
+```
+
+## Libraries & functions
+
+First, I'm loading the required libraries & functions
+
+```{r}
+suppressPackageStartupMessages(library(Seurat, lib.loc = "/software/Seuratv4/lib/")) # Seurat v4.4.0, library for single-cell analysis
+suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/software/Seuratv4/lib/")) # For compatibility purpose
+suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
+suppressPackageStartupMessages(library(ggplot2)) # For plotting
+suppressPackageStartupMessages(library(ggpubr)) # For grid plotting
+suppressPackageStartupMessages(library(plotly)) # For interactive plots
+suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
+
+cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("SeuratObject"), "version", as.character(packageVersion("SeuratObject")), "\n")
+cat(bold("BPCells"), "version", as.character(packageVersion("BPCells")), "\n")
+cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
+cat(bold("ggplot2"), "version", as.character(packageVersion("ggplot2")), "\n")
+cat(bold("ggpubr"), "version", as.character(packageVersion("ggpubr")), "\n")
+cat(bold("plotly"), "version", as.character(packageVersion("plotly")), "\n")
+
+# Random seed
+set.seed(42)
+```
+
+## Parameters
+
+*Paper:*
+Unravelling cell type-specific responses to Parkinson’s Disease at single cell resolution
+Martirosyan et al.
+Mol Neurodegeneration 19, 7 (2024)
+https://molecularneurodegeneration.biomedcentral.com/articles/10.1186/s13024-023-00699-0
+
+*Data repo:* https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE243639
+
+```{r}
+## Parameters
+input_seurat_object <- "./data/Martirosyan_2024/Martirosyan_neurons.rds"
+output_figure_prefix <- "./figures/Figure_S6E/Martirosyan_"
+```
+
+## I. Loading Seurat object
+
+### I.1 Read previously generated Seurat object (1.6M cells)
+
+```{r}
+data.seurat <- readRDS(input_seurat_object)
+data.seurat
+```
+
+### I.2 Plot
+
+```{r fig.width=5, fig.height=5}
+p <- FeaturePlot(data.seurat, reduction = "UMAP", features = "AUC_UPR_93_REACTOME", raster = FALSE, pt.size = 1) + theme_void()
+ggsave(paste0(output_figure_prefix, "UMAP_neurons.only_AUC_UPR_93_REACTOME.pdf"), plot = p, width = 5, height = 5, bg = "white")
+ggsave(paste0(output_figure_prefix, "UMAP_neurons.only_AUC_UPR_93_REACTOME.png"), plot = p, width = 5, height = 5, dpi = 1000, bg = "white")
+p
+```
+
+

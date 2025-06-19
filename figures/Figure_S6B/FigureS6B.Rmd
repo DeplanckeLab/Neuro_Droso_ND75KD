@@ -1,8 +1,8 @@
 ---
 project: "Emma Pan Neuro (Control + ND75KD)"
 author: "Vincent Gardeux"
-date: "2025/06/18"
-last_modified: "2025/06/18"
+date: "2025/06/19"
+last_modified: "2025/06/19"
 output:
   html_document:
     df_print: paged
@@ -19,8 +19,8 @@ knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
 First, I'm loading the required libraries & functions
 
 ```{r}
-suppressPackageStartupMessages(library(Seurat)) # Seurat v5 is needed here
-suppressPackageStartupMessages(library(BPCells)) # For handling big scRNAseq data in Seurat
+suppressPackageStartupMessages(library(Seurat, lib.loc = "/software/Seuratv4/lib/")) # Seurat v4.4.0, library for single-cell analysis
+suppressPackageStartupMessages(library(SeuratObject, lib.loc = "/software/Seuratv4/lib/")) # For compatibility purpose
 suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
 suppressPackageStartupMessages(library(ggplot2)) # For plotting
 suppressPackageStartupMessages(library(ggpubr)) # For grid plotting
@@ -52,7 +52,7 @@ https://molecularneurodegeneration.biomedcentral.com/articles/10.1186/s13024-023
 ```{r}
 ## Parameters
 input_seurat_object <- "./data/Martirosyan_2024/Martirosyan_neurons.rds"
-output_figure_prefix <- "./figures/Figure_S6X/Martirosyan_"
+output_figure_prefix <- "./figures/Figure_S6B/Martirosyan_"
 ```
 
 ## I. Loading Seurat object
@@ -67,9 +67,9 @@ data.seurat
 ### I.2 Plot
 
 ```{r fig.width=5, fig.height=5}
-p <- FeaturePlot(data.seurat, reduction = "umap", features = "ATF4_regulon_binarized", raster = FALSE) + theme_void() + theme(plot.title = element_blank()) + NoLegend()
-ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_ATF4_regulon_binarized.pdf"), plot = p, width = 5, height = 5, bg = "white")
-ggsave(paste0(output_figure_prefix, "UMAP_Excitatory.neurons.only_ATF4_regulon_binarized.png"), plot = p, width = 5, height = 5, dpi = 1000, bg = "white")
+p <- FeaturePlot(data.seurat, reduction = "UMAP", features = "AUC_OXPHOS_135_KEGG", raster = FALSE, pt.size = 1) + theme_void()
+ggsave(paste0(output_figure_prefix, "UMAP_neurons.only_AUC_OXPHOS_135_KEGG.pdf"), plot = p, width = 5, height = 5, bg = "white")
+ggsave(paste0(output_figure_prefix, "UMAP_neurons.only_AUC_OXPHOS_135_KEGG.png"), plot = p, width = 5, height = 5, dpi = 1000, bg = "white")
 p
 ```
 
