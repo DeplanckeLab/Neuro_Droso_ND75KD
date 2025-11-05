@@ -1,18 +1,31 @@
+# Heavy data files (to be put on Arrayexpress)
 data/*.rds
 data/*.h5
 data/*.loom
 data/*.h5ad
+
+# Reports from .Rmd
 preprocessing/*.html
+
+# Temporary Jupyter notebook
 .ipynb_checkpoints
-data/Martirosyan_2024/*.rds
+
+# SAMap files
 *.feather
 *.tbl
-data/Martirosyan_2024/Martirosyan_motifs.tsv
-data/Martirosyan_2024/Martirosyan_regulons_aucell.tsv
-data/Martirosyan_2024/Martirosyan_regulons_aucell_binarized.tsv
-data/Martirosyan_2024/Martirosyan_adj.csv
-data/Martirosyan_2024/GSE243639_Filtered_count_table.csv.gz
-data/Martirosyan_2024/Martirosyan_adj_v2.csv
-data/Martirosyan_2024/Martirosyan_modules.tsv
+
+# Public dataset: Martirosyan Parkinson's human brain data
+data/Martirosyan_2024/*
+!data/Martirosyan_2024/README.md
+
+# Public dataset: Mathys Alzheimer's human brain data
 data/Kellis_2024/*
+!data/Kellis_2024/README.md
+
+# Public dataset: Jeffries human brain aging data
+data/Jeffries_2025_HumanBrainAging/*
+!data/Jeffries_2025_HumanBrainAging/README.md
+
+# Temporary figures (to delete)
 figures/Figure_XX*
+
