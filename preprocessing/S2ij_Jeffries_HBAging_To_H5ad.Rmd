@@ -1,0 +1,177 @@
+---
+title: "Emma Pan Neuro (Control + ND75KD) - Preprocessing Human Brain Aging dataset from Jeffries et al."
+author: "Vincent Gardeux"
+date: "2025/11/13"
+last_modified: "2025/11/13"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
+```
+
+## Libraries & functions
+
+First, I'm loading the required libraries & functions
+
+```{r}
+suppressPackageStartupMessages(library(Seurat)) # Seurat v5, for compatibility with .rds object
+suppressPackageStartupMessages(library(SeuratObject)) # Seurat v5 object
+suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
+suppressPackageStartupMessages(library(reticulate)) # For Python access
+suppressPackageStartupMessages(library(Matrix)) # For writing DE gene file
+suppressPackageStartupMessages(library(MatrixExtra)) # For writing DE gene file
+suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
+
+cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("SeuratObject"), "version", as.character(packageVersion("SeuratObject")), "\n")
+cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
+cat(bold("reticulate"), "version", as.character(packageVersion("reticulate")), "\n")
+cat(bold("Matrix"), "version", as.character(packageVersion("Matrix")), "\n")
+cat(bold("MatrixExtra"), "version", as.character(packageVersion("MatrixExtra")), "\n")
+
+# Random seed
+set.seed(42)
+```
+
+## Set Python environment (reticulate)
+
+```{r}
+reticulate::use_python("/usr/bin/python3.12", required = TRUE)
+py_config()
+ad <- reticulate::import("anndata") # Import anndata Python package
+
+cat(bold("anndata"), "version", as.character(ad$`__version__`), "\n")
+```
+
+## Parameters
+
+*Paper:*
+Jeffries, A.M., Yu, T., Ziegenfuss, J.S. et al. Single-cell transcriptomic and genomic changes in the ageing human brain. Nature 646, 657–666 (2025). https://doi.org/10.1038/s41586-025-09435-8
+
+*Data repo:* https://publications.wenglab.org/SomaMut/Jeffries_Yu_BrainAging_2025/
+
+*Loom / H5ad file:* NA. Made in this script from .rds file.
+
+```{r}
+## Parameters
+input_rds <- "./data/Jeffries_2025_HumanBrainAging/pfc.clean.rds" # 367'317 cells vs 29'729 genes
+input_metadata <- "./data/Jeffries_2025_HumanBrainAging/pfc.clean.filtered_metadata.txt" # Just to check
+
+output_h5ad <- "./data/Jeffries_2025_HumanBrainAging/pfc.clean.h5ad"
+
+message("1. Seurat object to convert (input RDS file) = ", input_rds)
+message("2. H5ad file path = ", output_h5ad)
+```
+
+## I. Loading dataset
+
+### I.1. Reading rds file (Seurat object) downloaded from author's portal
+
+```{r}
+message("Loading Seurat object...")
+data.seurat <- readRDS(input_rds)
+message(ncol(data.seurat), " cells were loaded")
+message(nrow(data.seurat), " genes were loaded")
+```
+
+### I.2. Check Seurat object
+
+```{r, fig.width=8, fig.height=8}
+# Visualize QC metrics as a violin plot
+DimPlot(data.seurat, reduction = "umap", raster = TRUE, group.by = "batch")
+```
+
+```{r, fig.width=8, fig.height=8}
+# Visualize QC metrics as a violin plot
+DimPlot(data.seurat, reduction = "umap", raster = TRUE, group.by = "new_clusters3")
+```
+
+```{r, fig.width=8, fig.height=8}
+# Visualize QC metrics as a violin plot
+DimPlot(data.seurat, reduction = "umap", raster = TRUE, group.by = "sex")
+```
+
+### I.3. Reading global metadata from authors
+
+```{r}
+data.metadata <- fread(file = input_metadata, stringsAsFactors = F, data.table = F)
+rownames(data.metadata) <- data.metadata$V1
+data.metadata <- data.metadata[,-1]
+data.metadata
+```
+
+Seems to match the Seurat object
+
+## II. h5ad
+
+NOTE: I could use sceasy or SeuratDisk option, but it does not do what I want. And there are many missing fields. So I'll create the h5ad from scratch.
+
+# Prepare Cell attributes to put in h5ad
+
+```{r}
+# Cell metadata
+obs <- data.seurat@meta.data
+```
+
+# Raw matrix (I remove colnames and rownames)
+
+```{r}
+# Raw count matrix
+raw.X <- GetAssayData(object = data.seurat, assay = "RNA", layer = "counts")
+```
+
+# Prepare Gene metadata to put in h5ad
+
+```{r}
+# Gene metadata
+var <- as.data.frame(GetAssay(data.seurat, assay = "RNA")@features)
+var$Gene <- rownames(var)
+#var$Accession <- gene.mapping[rownames(var),"Name"]
+var
+```
+
+# Normalized matrix
+
+```{r}
+# Normalized count matrix
+X <- GetAssayData(object = data.seurat, assay = "RNA", layer = "data")
+```
+
+# Embeddings
+
+```{r}
+obsm <- NULL
+reductions <- names(data.seurat@reductions)
+if (length(reductions) > 0) {
+  obsm <- sapply(
+    reductions,
+    function(name) as.matrix(Seurat::Embeddings(data.seurat, reduction = name)),
+    simplify = FALSE
+  )
+  names(obsm) <- paste0("X_", tolower(names(data.seurat@reductions))) # More compatible with usual format
+}
+```
+
+# Global metadata in @misc
+
+```{r}
+uns <- data.seurat@misc
+uns$default_embedding <- "X_umap"
+```
+
+# Create h5ad file
+
+```{r}
+# AnnData object creation using reticulate
+adata <- ad$AnnData(X = Matrix::t(X), raw = list(X = Matrix::t(raw.X), var = var), obs = obs, var = var, obsm = obsm, uns = uns)
+```
+
+# Write object to file
+
+```{r}
+adata$write(output_h5ad, compression = "gzip")
+```

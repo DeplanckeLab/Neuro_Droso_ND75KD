@@ -1,0 +1,841 @@
+---
+title: "Emma Pan Neuro (Control + ND75KD) - Preprocessing and plotting Jeffries et al. The Human Brain Aging dataset."
+author: "Vincent Gardeux"
+date: "2025/11/17"
+last_modified: "2025/11/17"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = "/data/gardeux/Neuro_Droso_ND75KD/")
+```
+
+## Libraries & functions
+
+First, I'm loading the required libraries & functions
+
+```{r}
+suppressPackageStartupMessages(library(Seurat)) # Seurat v5 for compatibility with Jeffries' object
+suppressPackageStartupMessages(library(SeuratObject)) # For compatibility purpose
+suppressPackageStartupMessages(library(data.table)) # For writing DE gene file
+suppressPackageStartupMessages(library(readxl)) # For writing DE gene file
+suppressPackageStartupMessages(library(loomR)) # For building a file for ASAP
+suppressPackageStartupMessages(library(Matrix)) # For building a file for ASAP
+suppressPackageStartupMessages(library(ggplot2)) # For plotting
+suppressPackageStartupMessages(library(ggpubr)) # For grid plotting
+suppressPackageStartupMessages(library(plotly)) # For interactive plots
+suppressPackageStartupMessages(library(crayon)) # Just for bolding the console output :D
+
+cat(bold("Seurat"), "version", as.character(packageVersion("Seurat")), "\n")
+cat(bold("SeuratObject"), "version", as.character(packageVersion("SeuratObject")), "\n")
+cat(bold("data.table"), "version", as.character(packageVersion("data.table")), "\n")
+cat(bold("readxl"), "version", as.character(packageVersion("readxl")), "\n")
+cat(bold("loomR"), "version", as.character(packageVersion("loomR")), "\n")
+cat(bold("Matrix"), "version", as.character(packageVersion("Matrix")), "\n")
+cat(bold("ggplot2"), "version", as.character(packageVersion("ggplot2")), "\n")
+cat(bold("ggpubr"), "version", as.character(packageVersion("ggpubr")), "\n")
+cat(bold("plotly"), "version", as.character(packageVersion("plotly")), "\n")
+
+# Color palettes
+steinPalette <- c(`Central Brain A`="#80C980",`Central Brain B`="#BDADD4",`Optic lobe`="#376CB0",`Glia`="#FBBF85",`Other`="#F0027E")
+
+# Random seed
+set.seed(42)
+```
+
+## Parameters
+
+*Paper:*
+Jeffries, A.M., Yu, T., Ziegenfuss, J.S. et al. Single-cell transcriptomic and genomic changes in the ageing human brain. Nature 646, 657–666 (2025). https://doi.org/10.1038/s41586-025-09435-8
+
+*Data repo:* https://publications.wenglab.org/SomaMut/Jeffries_Yu_BrainAging_2025/
+
+*Loom / H5ad file:* NA. Made from .rds file.
+
+```{r}
+## Parameters
+input_rds <- "./data/Jeffries_2025_HumanBrainAging/pfc.clean.rds" # 367'317 cells vs 29'729 genes
+input_Oxphos_136_AUCell_values_path <- "./data/Jeffries_2025_HumanBrainAging_116_Oxphos_AUCell_auc.tsv"
+input_UPR_93_AUCell_values_path <- "./data/Jeffries_2025_HumanBrainAging_90_UPR_AUCell_auc.tsv"
+input_SCENIC_regulons_path <- "./data/Jeffries_2025_HumanBrainAging/pySCENIC/Martirosyan_regulons_aucell.tsv"
+input_SCENIC_regulons_binarized_path <- "./data/Jeffries_2025_HumanBrainAging/pySCENIC/Martirosyan_regulons_aucell_binarized.tsv"
+
+output_seurat_final <- "./data/Jeffries_2025_HumanBrainAging/Jeffries_HBAging"
+output_de_folder <- "./data/Jeffries_2025_HumanBrainAging/DE/"
+```
+
+## I. Loading dataset
+
+### I.1. Reading rds file (Seurat object) downloaded from author's portal
+
+```{r}
+message("Loading Seurat object...")
+data.seurat <- readRDS(input_rds)
+message(ncol(data.seurat), " cells were loaded")
+message(nrow(data.seurat), " genes were loaded")
+```
+
+### I.2 Reading OXPHOS AUC values from AUCell (using the 136 OXPHOS genes from KEGG Oxphos pathway https://www.genome.jp/entry/hsa00190)
+
+```{r}
+data.auc.oxphos <- fread(input_Oxphos_136_AUCell_values_path, data.table = F, check.names = F)
+rownames(data.auc.oxphos) <- data.auc.oxphos$Cell
+data.auc.oxphos
+```
+
+### I.3  Reading UPR AUC values from AUCell (using the 93 UPR genes from REACTOME - UNFOLDED PROTEIN RESPONSE (UPR))
+
+```{r}
+data.auc.upr <- fread(input_UPR_93_AUCell_values_path, data.table = F, check.names = F)
+rownames(data.auc.upr) <- data.auc.upr$Cell
+data.auc.upr
+```
+
+### I.4 Add to Seurat Object
+
+```{r}
+# Add metadata
+data.seurat$AUC_OXPHOS_136_KEGG <- data.auc.oxphos[colnames(data.seurat), "AUC"]
+data.seurat$AUC_UPR_93_REACTOME <- data.auc.upr[colnames(data.seurat), "AUC"]
+data.seurat$CLUSTER <- data.metadata[colnames(data.seurat), "CLUSTER"]
+data.seurat$IDENT <- data.metadata[colnames(data.seurat), "IDENT"]
+
+# Add UMAP
+data.seurat[["UMAP"]] <- CreateDimReducObject(embeddings = as.matrix(data.metadata[,c("UMAP_1", "UMAP_2")]), key = "UMAP_", assay = "RNA")
+```
+
+## II Plot interesting stuff
+
+### II.1 Plot author's UMAP
+
+```{r}
+DimPlot(data.seurat, reduction = "UMAP", group.by = "IDENT")
+```
+
+```{r}
+DimPlot(data.seurat, reduction = "UMAP", group.by = "CLUSTER")
+```
+
+### II.2.a Plot Distribution OXPHOS
+
+```{r}
+hist(data.seurat$AUC_OXPHOS_135_KEGG, breaks = 100)
+```
+
+### II.2.b Plot Boxplot OXPHOS
+
+```{r fig.width=5, fig.height=5}
+boxplot_data <- data.seurat@meta.data
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "AUC_OXPHOS_135_KEGG" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_135_KEGG, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = AUC_OXPHOS_135_KEGG, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_OXPHOS_135_KEGG") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+### II.2.c Plot UMAP OXPHOS
+
+```{r}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "AUC_OXPHOS_135_KEGG")
+```
+
+### II.3.a Plot Distribution UPR
+
+```{r}
+hist(data.seurat$AUC_UPR_93_REACTOME, breaks = 100)
+```
+
+### II.3.b Plot Boxplot UPR
+
+```{r fig.width=5, fig.height=5}
+boxplot_data <- data.seurat@meta.data
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "AUC_UPR_93_REACTOME" for each group
+median_values <- tapply(boxplot_data$AUC_UPR_93_REACTOME, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = AUC_UPR_93_REACTOME, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_UPR_93_REACTOME") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+### II.3.c Plot UMAP UPR
+
+```{r}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "AUC_UPR_93_REACTOME")
+```
+
+### II.4.a Plot Boxplot HSP90AA1
+
+```{r fig.width=5, fig.height=5}
+boxplot_data <- data.seurat@meta.data
+boxplot_data$HSP90AA1 <- data.seurat@assays$RNA@data["HSP90AA1",]
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "HSP90AA1" for each group
+median_values <- tapply(boxplot_data$HSP90AA1, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = HSP90AA1, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "HSP90AA1 Normalized expression") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+### II.4.b Plot UMAP HSP90AA1
+
+```{r}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "HSP90AA1")
+```
+
+### II.5.a Plot Boxplot HSPA8
+
+```{r fig.width=5, fig.height=5}
+boxplot_data <- data.seurat@meta.data
+boxplot_data$HSPA8 <- data.seurat@assays$RNA@data["HSPA8",]
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "HSPA8" for each group
+median_values <- tapply(boxplot_data$HSPA8, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = HSPA8, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "HSPA8 Normalized expression") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+### II.5.b Plot UMAP HSPA8
+
+```{r}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "HSPA8")
+```
+
+### II.6.a Plot Boxplot ATF4
+
+```{r fig.width=5, fig.height=5}
+boxplot_data <- data.seurat@meta.data
+boxplot_data$ATF4 <- data.seurat@assays$RNA@data["ATF4",]
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "ATF4" for each group
+median_values <- tapply(boxplot_data$ATF4, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = ATF4, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "ATF4 Normalized expression") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+### II.6.b Plot UMAP ATF4
+
+```{r}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "ATF4")
+```
+
+### III Regulon data from pySCENIC
+
+## III.1 Reading regulons values from SCENIC output
+
+```{r}
+data.scenic <- fread(input_SCENIC_regulons_path, data.table = F, check.names = F)
+rownames(data.scenic) <- gsub(x = data.scenic$Cell, pattern = ".1$", replacement = "-1")
+data.scenic <- data.scenic[,-1]
+data.scenic
+```
+
+Updating colnames
+
+```{r}
+colnames(data.scenic) <- gsub(x = colnames(data.scenic), pattern = "\\(\\+\\)", replacement = "_activating_regulon")
+colnames(data.scenic) <- gsub(x = colnames(data.scenic), pattern = "\\(\\-\\)", replacement = "_repressing_regulon")
+colnames(data.scenic) <- paste0("SCENIC_", colnames(data.scenic))
+data.scenic
+```
+
+## III.2 Adding each regulon as a metadata to the Seurat object:
+
+```{r}
+# Adding each column as a metadata
+for(regulon in colnames(data.scenic)){
+  data.seurat@meta.data[[regulon]] <- data.scenic[colnames(data.seurat), regulon]
+}
+```
+
+## III.3 Compute UMAP on regulon matrix
+
+```{r fig.height=8, fig.width=12}
+# Adding whole regulon matrix as an embedding
+# Saving mapping for later
+data.mapping.regulon <- data.frame(regulon = colnames(data.scenic), mapping = paste0("SCENIC_", 1:ncol(data.scenic)))
+rownames(data.mapping.regulon) <- data.mapping.regulon$regulon
+# Change col names to comply with required format
+colnames(data.scenic) <- data.mapping.regulon[colnames(data.scenic), "mapping"]
+data.seurat@reductions[['SCENIC']] <- CreateDimReducObject(embeddings = as.matrix(data.scenic), key = 'SCENIC_', assay = 'RNA')
+
+# Compute UMAP on it
+data.seurat <- RunUMAP(object = data.seurat, reduction.name = "SCENICumap", reduction = "SCENIC", dims = 1:ncol(data.scenic), reduction.key = "SCENICumap_", assay = 'RNA', n.neighbors = 10L, metric = "correlation", min.dist = 0.4)
+DimPlot(data.seurat, reduction = "SCENICumap", label = TRUE, pt.size = 0.5, group.by = "IDENT") + NoLegend()
+```
+
+### IV Binarized Regulon data from pySCENIC
+
+## IV.1 Reading regulons values from binarized SCENIC output
+
+```{r}
+data.scenic <- fread(input_SCENIC_regulons_binarized_path, data.table = F)
+rownames(data.scenic) <- gsub(x = data.scenic$Cell, pattern = ".1$", replacement = "-1")
+data.scenic <- data.scenic[,-1]
+data.scenic
+```
+
+Updating colnames
+
+```{r}
+colnames(data.scenic) <- gsub(x = colnames(data.scenic), pattern = "\\(\\+\\)", replacement = "_activating_regulon_binarized")
+colnames(data.scenic) <- gsub(x = colnames(data.scenic), pattern = "\\(\\-\\)", replacement = "_repressing_regulon_binarized")
+colnames(data.scenic) <- paste0("SCENIC_", colnames(data.scenic))
+data.scenic
+```
+
+## IV.2 Adding each regulon as a metadata to the Seurat object:
+
+```{r}
+# Adding each column as a metadata
+for(regulon in colnames(data.scenic)){
+  data.seurat@meta.data[[regulon]] <- data.scenic[colnames(data.seurat), regulon]
+}
+```
+
+## IV.3 Compute UMAP on binarized regulon matrix
+
+```{r fig.height=8, fig.width=12}
+# Adding whole binarized regulon matrix as an embedding
+# Saving mapping for later
+data.mapping.regulon_binarized <- data.frame(regulon = colnames(data.scenic), mapping = paste0("SCENIC_", 1:ncol(data.scenic)))
+rownames(data.mapping.regulon_binarized) <- data.mapping.regulon_binarized$regulon
+# Change col names to comply with required format
+colnames(data.scenic) <- data.mapping.regulon_binarized[colnames(data.scenic), "mapping"]
+data.seurat@reductions[['SCENICbinarized']] <- CreateDimReducObject(embeddings = as.matrix(data.scenic), key = 'SCENICbinarized_', assay = 'RNA')
+
+# Compute UMAP on it
+data.seurat <- RunUMAP(object = data.seurat, reduction.name = "SCENICbinarizedumap", reduction = "SCENICbinarized", dims = 1:ncol(data.scenic), reduction.key = "SCENICbinarizedumap_", assay = 'RNA', n.neighbors = 10L, metric = "correlation", min.dist = 0.4)
+DimPlot(data.seurat, reduction = "SCENICbinarizedumap", label = TRUE, pt.size = 0.5, group.by = "IDENT") + NoLegend()
+```
+
+## IV.4 ATF4 regulon
+
+```{r fig.width=10, fig.height=5}
+FeaturePlot(data.seurat, reduction = "UMAP", label = F, pt.size = 0.5, features = c("SCENIC_ATF4_activating_regulon", "SCENIC_ATF4_activating_regulon_binarized")) + NoLegend()
+```
+
+```{r fig.width=10, fig.height=5}
+FeaturePlot(data.seurat, reduction = "SCENICumap", label = F, pt.size = 0.5, features = c("SCENIC_ATF4_activating_regulon", "SCENIC_ATF4_activating_regulon_binarized")) + NoLegend()
+```
+
+```{r fig.width=10, fig.height=5}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", label = F, pt.size = 0.5, features = c("SCENIC_ATF4_activating_regulon", "SCENIC_ATF4_activating_regulon_binarized")) + NoLegend()
+```
+
+```{r fig.width=5, fig.height=5}
+boxplot_data <- data.seurat@meta.data
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "ATF4 regulon" for each group
+median_values <- tapply(boxplot_data$SCENIC_ATF4_activating_regulon, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = SCENIC_ATF4_activating_regulon, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "ATF4 regulon activity") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+## IV.5 Clinical data
+
+## IV.5.1 Read clinical data
+
+```{r}
+data.clinical <- fread(input_clinical, sep = ";", header = T, skip = 5, data.table = F)
+data.clinical
+```
+
+### IV.5.2 Adding to Seurat object
+
+```{r}
+data.seurat$clinicalDiag <- data.clinical$`Clinical diagnosis`[match(data.seurat$orig.ident.parsed, data.clinical$`Sample ID`)]
+data.seurat$clinicalDiag <- factor(data.seurat$clinicalDiag, levels = c("Control", "Parkinson's"))
+data.seurat$sex <- data.clinical$Sex[match(data.seurat$orig.ident.parsed, data.clinical$`Sample ID`)]
+data.seurat$sex <- factor(data.seurat$sex, levels = c("female", "male"))
+data.seurat$age <- data.clinical$Age[match(data.seurat$orig.ident.parsed, data.clinical$`Sample ID`)]
+data.seurat$pmi <- data.clinical$`PMI hours`[match(data.seurat$orig.ident.parsed, data.clinical$`Sample ID`)]
+data.seurat$lewy_midbrain <- data.clinical$`Lewy bodies presence in midbrain`[match(data.seurat$orig.ident.parsed, data.clinical$`Sample ID`)]
+data.seurat$lewy_midbrain[is.na(data.seurat$lewy_midbrain)] <- 0
+data.seurat$lewy_amygdala <- data.clinical$`Lewy bodies presence in limbic regions (amygdala)`[match(data.seurat$orig.ident.parsed, data.clinical$`Sample ID`)]
+data.seurat$lewy_amygdala[is.na(data.seurat$lewy_amygdala)] <- 0
+data.seurat$lewy_cortex <- data.clinical$`Lewy bodies presence in neocortical regions (frontal cortex)`[match(data.seurat$orig.ident.parsed, data.clinical$`Sample ID`)]
+data.seurat$lewy_cortex[is.na(data.seurat$lewy_cortex)] <- 0
+data.seurat$cerad_score_plaque <- data.clinical$`CERAD score for neuritic plaques`[match(data.seurat$orig.ident.parsed, data.clinical$`Sample ID`)]
+data.seurat$cerad_score_plaque[is.na(data.seurat$cerad_score_plaque)] <- 0
+data.seurat$braak_stage <- data.clinical$`Braak stage for neurofibrillary tangles`[match(data.seurat$orig.ident.parsed, data.clinical$`Sample ID`)]
+data.seurat$braak_stage[is.na(data.seurat$braak_stage)] <- 0
+```
+
+## IV.6 Save Seurat object
+
+```{r}
+saveRDS(data.seurat, file = paste0(output_seurat_final, ".rds"))
+```
+
+## V Subsetting to only neurons
+
+### V.1 Read metadata from authors
+
+```{r}
+data.neurons <- as.data.frame(read_xlsx(path = input_metadata, sheet = "Neurons"))
+rownames(data.neurons) <- data.neurons$CELL_ID
+data.neurons$UMAP_1 <- as.numeric(data.neurons$UMAP_1)
+data.neurons$UMAP_2 <- as.numeric(data.neurons$UMAP_2)
+data.neurons
+```
+
+Authors have subset their dataset and redo a UMAP and clustering on the subset dataset.
+
+### V.2 Subset the Seurat object
+
+```{r}
+# Subset to neuron cells from metadata
+neuron.cells <- rownames(data.neurons)[rownames(data.neurons) %in% colnames(data.seurat)]
+data.seurat <- subset(data.seurat, cells = neuron.cells)
+
+# Add/replace new metadata
+data.seurat$CLUSTER <- data.neurons[colnames(data.seurat), "CLUSTER"]
+data.seurat$IDENT <- data.neurons[colnames(data.seurat), "IDENT"]
+
+# Add UMAP
+data.seurat[["UMAP"]] <- CreateDimReducObject(embeddings = as.matrix(data.neurons[,c("UMAP_1", "UMAP_2")]), key = "UMAP_", assay = "RNA")
+```
+
+### V.3 Recompute regulon UMAPs from SCENIC vectors
+
+#### V.3.1 Compute UMAP on regulon matrix
+
+```{r fig.height=5, fig.width=5}
+# Capture the non-binarized regulon matrix from metadata
+data.scenic <- data.seurat@meta.data
+data.scenic <- data.scenic[,endsWith(colnames(data.scenic), suffix = "_activating_regulon")]
+
+# Adding whole regulon matrix as an embedding
+colnames(data.scenic) <- paste0("SCENIC_", 1:ncol(data.scenic))
+data.seurat@reductions[['SCENIC']] <- CreateDimReducObject(embeddings = as.matrix(data.scenic), key = 'SCENIC_', assay = 'RNA')
+
+# Compute UMAP on it
+data.seurat <- RunUMAP(object = data.seurat, reduction.name = "SCENICumap", reduction = "SCENIC", dims = 1:ncol(data.scenic), reduction.key = "SCENICumap_", assay = 'RNA', n.neighbors = 10L, metric = "correlation", min.dist = 0.4)
+DimPlot(data.seurat, reduction = "SCENICumap", label = TRUE, pt.size = 0.5, group.by = "IDENT") + NoLegend()
+```
+
+#### V.3.2 Compute UMAP on binarized regulon matrix
+
+```{r fig.height=5, fig.width=5}
+# Capture the binarized regulon matrix from metadata
+data.scenic <- data.seurat@meta.data
+data.scenic <- data.scenic[,endsWith(colnames(data.scenic), suffix = "_activating_regulon_binarized")]
+
+# Adding whole regulon matrix as an embedding
+colnames(data.scenic) <- paste0("SCENIC_", 1:ncol(data.scenic))
+data.seurat@reductions[['SCENICbinarized']] <- CreateDimReducObject(embeddings = as.matrix(data.scenic), key = 'SCENICbinarized_', assay = 'RNA')
+
+# Compute UMAP on it
+data.seurat <- RunUMAP(object = data.seurat, reduction.name = "SCENICbinarizedumap", reduction = "SCENICbinarized", dims = 1:ncol(data.scenic), reduction.key = "SCENICbinarizedumap_", assay = 'RNA', n.neighbors = 10L, metric = "correlation", min.dist = 0.4)
+DimPlot(data.seurat, reduction = "SCENICbinarizedumap", label = TRUE, pt.size = 0.5, group.by = "IDENT") + NoLegend()
+```
+
+## VI Plot interesting stuff
+
+### VI.1 Plot author's UMAP
+
+```{r fig.height=5, fig.width=5}
+DimPlot(data.seurat, reduction = "UMAP", group.by = "IDENT", label = T) + NoLegend()
+```
+
+```{r fig.height=5, fig.width=5}
+DimPlot(data.seurat, reduction = "UMAP", group.by = "CLUSTER", label = T) + NoLegend()
+```
+
+### VI.2 OXPHOS score(gene set from KEGG, AUCell for scoring)
+
+#### VI.2.a Plot Distribution OXPHOS
+
+```{r}
+hist(data.seurat$AUC_OXPHOS_135_KEGG, breaks = 100)
+```
+
+#### VI.2.b Plot Boxplot OXPHOS
+
+```{r fig.width=5, fig.height=5}
+boxplot_data <- data.seurat@meta.data
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "AUC_OXPHOS_135_KEGG" for each group
+median_values <- tapply(boxplot_data$AUC_OXPHOS_135_KEGG, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = AUC_OXPHOS_135_KEGG, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_OXPHOS_135_KEGG") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+#### VI.2.c Plot UMAP OXPHOS
+
+```{r fig.height=5, fig.width=6}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "AUC_OXPHOS_135_KEGG")
+```
+
+```{r fig.height=5, fig.width=6}
+FeaturePlot(data.seurat, reduction = "SCENICumap", features = "AUC_OXPHOS_135_KEGG")
+```
+
+```{r fig.height=5, fig.width=6}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = "AUC_OXPHOS_135_KEGG")
+```
+
+### VI.3 UPR scoring (gene set from REACTOME, scoring with AUCell)
+
+#### VI.3.a Plot Distribution UPR
+
+```{r}
+hist(data.seurat$AUC_UPR_93_REACTOME, breaks = 100)
+```
+
+#### IV.3.b Plot Boxplot UPR
+
+```{r fig.width=5, fig.height=5}
+boxplot_data <- data.seurat@meta.data
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "AUC_UPR_93_REACTOME" for each group
+median_values <- tapply(boxplot_data$AUC_UPR_93_REACTOME, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = AUC_UPR_93_REACTOME, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "AUC_UPR_93_REACTOME") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+#### VI.3.c Plot UMAP UPR
+
+```{r fig.height=5, fig.width=6}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "AUC_UPR_93_REACTOME")
+```
+
+```{r fig.height=5, fig.width=6}
+FeaturePlot(data.seurat, reduction = "SCENICumap", features = "AUC_UPR_93_REACTOME")
+```
+
+```{r fig.height=5, fig.width=6}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = "AUC_UPR_93_REACTOME")
+```
+
+### VI.4 HSP90AA1 gene of interest
+
+#### VI.4.a Plot Boxplot HSP90AA1
+
+```{r fig.width=5, fig.height=5}
+boxplot_data <- data.seurat@meta.data
+boxplot_data$HSP90AA1 <- data.seurat@assays$RNA@data["HSP90AA1",]
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "HSP90AA1" for each group
+median_values <- tapply(boxplot_data$HSP90AA1, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = HSP90AA1, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "HSP90AA1 Normalized expression") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+#### VI.4.b Plot UMAP HSP90AA1
+
+```{r fig.width=6, fig.height=5}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "HSP90AA1")
+```
+
+```{r fig.width=6, fig.height=5}
+FeaturePlot(data.seurat, reduction = "SCENICumap", features = "HSP90AA1")
+```
+
+```{r fig.width=6, fig.height=5}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = "HSP90AA1")
+```
+
+### VI.5 HSPA8 gene of interest
+
+#### VI.5.a Plot Boxplot HSPA8
+
+```{r fig.width=5, fig.height=5}
+boxplot_data <- data.seurat@meta.data
+boxplot_data$HSPA8 <- data.seurat@assays$RNA@data["HSPA8",]
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "HSPA8" for each group
+median_values <- tapply(boxplot_data$HSPA8, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = HSPA8, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "HSPA8 Normalized expression") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+#### VI.5.b Plot UMAP HSPA8
+
+```{r fig.width=6, fig.height=5}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "HSPA8")
+```
+
+```{r fig.width=6, fig.height=5}
+FeaturePlot(data.seurat, reduction = "SCENICumap", features = "HSPA8")
+```
+
+```{r fig.width=6, fig.height=5}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = "HSPA8")
+```
+
+### VI.6 ATF4 gene/TF of interest
+
+#### VI.6.a Plot Boxplot ATF4
+
+```{r fig.width=5, fig.height=5}
+boxplot_data <- data.seurat@meta.data
+boxplot_data$ATF4 <- data.seurat@assays$RNA@data["ATF4",]
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "ATF4" for each group
+median_values <- tapply(boxplot_data$ATF4, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = ATF4, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "ATF4 Normalized expression") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+#### VI.6.b Plot UMAP ATF4
+
+```{r fig.width=6, fig.height=5}
+FeaturePlot(data.seurat, reduction = "UMAP", features = "ATF4")
+```
+
+```{r fig.width=6, fig.height=5}
+FeaturePlot(data.seurat, reduction = "SCENICumap", features = "ATF4")
+```
+
+```{r fig.width=6, fig.height=5}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = "ATF4")
+```
+
+### VI.7 ATF4 regulon
+
+#### VI.7.a Plot Boxplot ATF4 regulon activity
+
+```{r fig.width=5, fig.height=5}
+boxplot_data <- data.seurat@meta.data
+
+# Filter out <5 cells per annotation
+boxplot_data <- boxplot_data[boxplot_data$IDENT %in% names(which(table(boxplot_data$IDENT) >= 5)),]
+
+# Calculating median values of "ATF4" for each group
+median_values <- tapply(boxplot_data$SCENIC_ATF4_activating_regulon, boxplot_data$IDENT, median)
+
+# Sorting the metadata based on median values
+boxplot_data$IDENT <- factor(boxplot_data$IDENT, levels = names(sort(median_values, decreasing = F)))
+
+# Plot
+p <- ggplot(boxplot_data, aes(x = IDENT, y = SCENIC_ATF4_activating_regulon, fill = IDENT)) +
+  geom_boxplot() +
+  labs(x = NULL, y = "ATF4 regulon activity") +
+  theme_minimal() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  NoLegend()
+
+p
+```
+
+#### VI.6.b Plot UMAP ATF4 regulon activity
+
+```{r fig.width=11, fig.height=5}
+FeaturePlot(data.seurat, reduction = "UMAP", features = c("SCENIC_ATF4_activating_regulon","SCENIC_ATF4_activating_regulon_binarized"))
+```
+
+```{r fig.width=11, fig.height=5}
+FeaturePlot(data.seurat, reduction = "SCENICumap", features = c("SCENIC_ATF4_activating_regulon","SCENIC_ATF4_activating_regulon_binarized"))
+```
+
+```{r fig.width=11, fig.height=5}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("SCENIC_ATF4_activating_regulon","SCENIC_ATF4_activating_regulon_binarized"))
+```
+
+#### VII Differential gene / regulon in Neurons00 && Neurons03
+
+#### VII.1 DE genes in Neurons00+Neurons03 vs others
+
+```{r}
+# 1. Create new grouping
+data.seurat$UPC_Oxphos_Neurons <- data.seurat$IDENT %in% c("neurons00", "neurons03")
+data.seurat$UPC_Oxphos_Neurons[data.seurat$UPC_Oxphos_Neurons] <- "Neurons00+Neurons03"
+data.seurat$UPC_Oxphos_Neurons[data.seurat$UPC_Oxphos_Neurons == "FALSE"] <- "Others"
+
+# 2. Run DE
+gene.markers <- FindMarkers(data.seurat, assay = "RNA", slot = "data", ident.1 = "Neurons00+Neurons03", ident.2 = "Others", group.by = "UPC_Oxphos_Neurons", verbose = T, test.use = "wilcox", random.seed = 42, logfc.threshold = 0, min.pct = -Inf)
+
+# 3. Enhance output
+gene.markers$gene <- rownames(gene.markers)
+
+# 4. Save in file
+fwrite(gene.markers, file = paste0(output_de_folder, "de_genes.tsv"), sep = "\t")
+
+# Filtered output
+gene.markers.filtered <- gene.markers[gene.markers$p_val_adj <= 0.05,]
+gene.markers.filtered <- gene.markers.filtered[order(abs(gene.markers.filtered$avg_log2FC), decreasing = T),]
+fwrite(gene.markers.filtered, file = paste0(output_de_folder, "de_genes_filtered.tsv"), sep = "\t")
+
+gene.markers.filtered
+```
+
+```{r fig.width=11, fig.height=10}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("ENO1","KAZN","ATP6V0B","CSMD1","GALNTL6","HSP90AA1", "NEFM", "ALDH1A1", "TUBB2A"), ncol = 3)
+```
+
+#### VII.2 Differentially activated regulons in Neurons00+Neurons03 vs others (based on non-binarized data)
+
+```{r}
+# 1. Run DE
+regulon.markers <- FindMarkers(data.seurat, assay = "SCENIC", slot = "data", ident.1 = "Neurons00+Neurons03", ident.2 = "Others", group.by = "UPC_Oxphos_Neurons", verbose = T, test.use = "wilcox", random.seed = 42, logfc.threshold = 0, min.pct = -Inf)
+
+# 2. Enhance output
+rownames(data.mapping.regulon) <- data.mapping.regulon$mapping
+regulon.markers$regulon <- data.mapping.regulon[rownames(regulon.markers), "regulon"]
+regulon.markers$gene <- gsub(x = regulon.markers$regulon, pattern = "SCENIC_", replacement = "")
+regulon.markers$gene <- gsub(x = regulon.markers$gene, pattern = "_activating_regulon", replacement = "")
+
+# 3. Save in file
+fwrite(regulon.markers, file = paste0(output_de_folder, "de_regulons.tsv"), sep = "\t")
+
+# Filtered output
+regulon.markers.filtered <- regulon.markers[regulon.markers$p_val_adj <= 0.05,]
+regulon.markers.filtered <- regulon.markers.filtered[order(abs(regulon.markers.filtered$avg_diff), decreasing = T),]
+fwrite(regulon.markers.filtered, file = paste0(output_de_folder, "de_regulons_filtered.tsv"), sep = "\t")
+
+regulon.markers.filtered
+```
+
+```{r fig.width=16, fig.height=15}
+FeaturePlot(data.seurat, reduction = "SCENICbinarizedumap", features = c("SCENIC_ENO1_activating_regulon","SCENIC_CYB5R1_activating_regulon","SCENIC_GOT1_activating_regulon","SCENIC_PKM_activating_regulon","SCENIC_TCEAL2_activating_regulon","SCENIC_FOXA1_activating_regulon", "SCENIC_TPI1_activating_regulon", "SCENIC_TCEAL6_activating_regulon", "SCENIC_SOD1_activating_regulon"), ncol = 3)
+```
+
+#### VII.3 Save Seurat object
+
+```{r}
+saveRDS(data.seurat, file = paste0(output_seurat_final, "_neurons.rds"))
+```
