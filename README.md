@@ -49,17 +49,8 @@ This tedious task generated the [Pan_neuro_integrated_markers_annotation.txt](./
 We do this after all metadata were generated, in step 1.4.
 
 ### 1.3. Running pySCENIC and adding regulon data to the Seurat object
-Now, we will run the pySCENIC pipeline in Python, using the [aertslab/pyscenic:0.12.1](https://hub.docker.com/r/aertslab/pyscenic/tags) Docker image available on the DockerHub.
-
-**Of note:** We simply had to add the `ipykernel` package in the Docker image to create a Jupyter Notebook kernel (created in /usr/local/share/jupyter/kernels/pySCENIC/[kernel.json](./data/kernel.json)) that we could then load in Jupyter Notebook.
-
-#### 1.3.a Running pySCENIC in Python <sub>(see full code here: [[ipynb](preprocessing/S3a_Pan_neuro_integrated_pySCENIC_pipeline.ipynb)])</sub>
-Running pySCENIC without any error was far from being an easy journey. We'd like to point an eventual reader to this GitHub issue that we've created for this purpose: [aertslab/pySCENIC/issues/534](https://github.com/aertslab/pySCENIC/issues/534). It explains the issues we faced and how we resolved them. This may help to understand some filtering/mapping that we do in the ipynb file, which are not from the default pySCENIC tutorial.
-
-It is worth noting that we saved all intermediary files in .tsv files (available in [./data](./data)). We also applied the binarization method for each regulon, to get a binary output (instead of a continuous regulon score) of activated vs. non-activated regulon. Both regulon outputs are then stored in [Pan_neuro_integrated_regulons_aucell.tsv](./data/Pan_neuro_integrated_regulons_aucell.tsv) and [Pan_neuro_integrated_regulons_aucell_binarized.tsv](./data/Pan_neuro_integrated_regulons_aucell_binarized.tsv) to be further imported into the Seurat object.
-
-#### 1.3.b Importing pySCENIC regulons to the Seurat object
-We do this after all metadata were generated, in step 1.4.
+Now, we will run the pySCENIC pipeline in Python. This generates several .tsv files to be added to the Seurat object in further step 1.4.
+See dedicated page in [preprocessing/pySCENIC](preprocessing/pySCENIC)
 
 ### 1.4 Adding all metadata to the final Seurat object <sub>(see full code here: [[Rmd](preprocessing/S4_Pan_neuro_integrated_add_metadata.Rmd)])</sub>
 In this step we add the metadata generated in steps 1.2.a, 1.2.b, and 1.3 to the final Seurat object.
