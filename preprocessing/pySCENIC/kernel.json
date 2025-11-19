@@ -10,13 +10,13 @@
   "/home:/home",
   "-v",
   "/data:/data",
-  "localhost/pyscenic-0.12.1",
+  "pyscenic:0.12.1",
   "python",
   "-m",
   "ipykernel_launcher",
   "-f",
   "/connection-spec"
  ],
- "display_name": "pySCENIC (Python v3.10)",
+ "display_name": "pySCENIC v0.12.1 (Python v3.10)",
  "language": "python"
 }
