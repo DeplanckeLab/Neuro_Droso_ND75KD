@@ -26,6 +26,10 @@ data/Kellis_2024/*
 data/Jeffries_2025_HumanBrainAging/*
 !data/Jeffries_2025_HumanBrainAging/README.md
 
+# Public dataset: Linnarsson mouse brain data
+data/Linnarsson_2018_MouseBrain/*
+!data/Linnarsson_2018_MouseBrain/README.md
+
 # Temporary figures (to delete)
 figures/Figure_XX*
 figures/Figure_SX
