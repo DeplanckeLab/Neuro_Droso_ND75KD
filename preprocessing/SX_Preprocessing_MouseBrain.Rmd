@@ -54,9 +54,9 @@ Cell, Volume 174, Issue 4, 999 - 1014.e22
 
 ```{r}
 ## Parameters
-input_loom <- "./data/l5_all_rev1.loom"
+input_loom <- "./data/Linnarsson_2018_MouseBrain/l5_all_rev1.loom"
 input_Oxphos_133_AUCell_values_path <- "./data/Linnarsson_133_Oxphos_AUCell_auc.tsv"
-output_figure_prefix <- "./figures/Figure_5A/"
+output_figure_prefix <- "./figures/Figure_SX/"
 ```
 
 ## I. Extracting information from Loom
@@ -439,6 +439,12 @@ p
 ```{r}
 ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_Tissue.pdf"), width = 8, height = 5, bg = "white")
 ggsave(p, filename = paste0(output_figure_prefix, "Linnarsson_133_Oxphos_AUCell_ordered_boxplot_Tissue.png"), width = 8, height = 5, dpi = 1000, bg = 'white')
+```
+
+# Save metadata for Joe
+
+```{r}
+fwrite(data.metadata, file = "./data/Linnarsson_2018_MouseBrain/Linnarsson.metadata.AUCell.Oxphos.tsv", sep = "\t")
 ```
 
 <!-- message("Loading KEGG pathway...") -->
